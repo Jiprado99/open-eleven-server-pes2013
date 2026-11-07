@@ -427,6 +427,47 @@ clients on that LAN can't reach each other through the router's public address, 
 what the client reported at `CMD_JOIN_BLOCK`. A publicly advertised server keeps the
 external endpoint.
 
+### PES 2013: STUN and peer addresses
+
+PES 2013 finds its public address with a STUN server on **UDP 3478** (and 3479 as the alternate
+port); open both in the firewall and publish them in Docker. Two optional settings cover servers
+whose players arrive over another network than `AdvertiseIp` names (Radmin/Hamachi, a LAN next to a
+public IP):
+
+```yaml
+Server:
+  Stun:
+    PublicAddress: "26.1.2.3"   # what the RFC 3489 reply calls the server; default: AdvertiseIp's address
+    BindAddress: "26.1.2.3"     # bind the UDP sockets to one interface; default: all of them
+```
+
+The server also corrects what a client reports in `CMD_SEND_IPANDPORT_NTL`: an empty
+`reflexive_addr` (its STUN reply never arrived) is replaced by the address the server sees on the
+connection, and a private `host_addr` (e.g. `192.168.1.50`) is replaced by the player's public one
+for every peer that is not behind the same NAT. The `server.log` line `pid N NTL ...` shows both
+values and the TCP address.
+
+### PES 2013: which teams the client may pick
+
+The server tells each client a whitelist of team ids (`useable_team_id`, at most 400). For PES 2013
+it is built from the game's own team list (Kitserver writes it as `kitserver13\teamlist.txt` the
+first time the game runs): national teams, classic teams, clubs that have a kit in the GDB, then
+the remaining clubs by id. Placeholder entries (`(null)`, Master League defaults and fictional
+teams) are left out.
+
+To add the teams of a mod or hide some, without a rebuild:
+
+```yaml
+Server:
+  Teams:
+    Include: [4100, 4101]   # go first, so they are never the ones cut at 400
+    Exclude: [4000, 4003]
+```
+
+Team ids are the same on every install, but the club behind an id in the 4000s depends on the
+league selected in PESEDIT's selector. Players in the same room need the same selection (the same
+`EDIT.bin`) or their match data will not agree.
+
 ## License
 
 OpenEleven is licensed under the **GNU Affero General Public License v3.0 or later**

@@ -22,6 +22,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The PES 2013 helper scripts live in the repository's tools folder and are offered on the
+         site's /tools page. Served by a fixed-name endpoint from <app>/tools, so the page can only
+         ever hand out these files. -->
+    <None Include="..\..\tools\run-pes2013-radmin.ps1" Link="tools\run-pes2013-radmin.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\tools\run-pes2013-radmin.bat" Link="tools\run-pes2013-radmin.bat" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OpenEleven.Protocol\OpenEleven.Protocol.csproj" />
     <ProjectReference Include="..\OpenEleven.Data\OpenEleven.Data.csproj" />
   </ItemGroup>

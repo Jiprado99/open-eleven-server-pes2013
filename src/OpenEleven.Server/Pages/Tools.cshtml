@@ -1,0 +1,58 @@
+@page "/tools"
+@model ToolsModel
+@{
+    ViewData["Title"] = "Downloads";
+    ViewData["Nav"] = "tools";
+}
+<h1 class="title center">Downloads</h1>
+<p class="subtitle center">Cómo conectarte desde una VPN como Radmin</p>
+
+<div class="grid two">
+    <section class="panel">
+        <h2>1. Apuntá el juego a este servidor</h2>
+        <div class="body">
+            <p>Agregá estas líneas al archivo <code>C:\Windows\System32\drivers\etc\hosts</code> (abrí el Bloc de notas como administrador):</p>
+            <pre class="codeblock">@Model.HostsBlock</pre>
+            <p class="muted">La dirección es la que usa este servidor para recibir conexiones. Después ejecutá <code>ipconfig /flushdns</code>.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>2. Iniciá el juego con el lanzador</h2>
+        <div class="body">
+            <p>
+                PES 2013 conecta sus sockets de red al adaptador que tiene la ruta por defecto, normalmente la
+                placa de red local. Una VPN descarta los paquetes que salen desde cualquier otra dirección, así
+                que el juego nunca recibe su dirección pública y la conexión falla. El lanzador inicia el juego
+                mediante <a href="https://r1ch.net/projects/forcebindip">ForceBindIP</a>, de modo que todos los
+                sockets usen tu dirección de Radmin. La primera vez descarga ForceBindIP desde el sitio de su autor.
+            </p>
+            <ol>
+                <li>Descargá los dos archivos del lanzador en la misma carpeta.</li>
+                <li>Hacé doble clic en <code>run-pes2013-radmin.bat</code>.</li>
+                <li>Si el juego necesita permisos de administrador, ejecutá también el <code>.bat</code> como administrador.</li>
+            </ol>
+        </div>
+    </section>
+</div>
+
+<section class="panel">
+    <h2>Archivos</h2>
+    <table class="list">
+        <tbody>
+        @foreach (var (file, description) in Model.Files)
+        {
+            <tr>
+                <td><a href="/tools/@file">@file</a></td>
+                <td style="white-space: normal" class="muted">@description</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <div class="body">
+        <p class="muted">
+            Son archivos de texto: abrilos con el Bloc de notas para ver qué hacen antes de ejecutarlos.
+            Windows puede mostrar una advertencia por ser scripts descargados de internet.
+        </p>
+    </div>
+</section>

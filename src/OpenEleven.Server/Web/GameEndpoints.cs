@@ -92,6 +92,13 @@ public static class GameEndpoints
             return Results.Text("STATUS:200\r\nAPI_STATUS:1\r\n", "text/plain", Encoding.UTF8);
         });
 
+        // The helper scripts offered on /tools. A fixed list of names, each served from <app>/tools,
+        // so no request can reach any other file. Sent as attachments: they are meant to be saved.
+        app.MapMethods("/tools/{name}", ["GET", "HEAD"], (string name) =>
+            ToolDownloads.Find(name) is { } path
+                ? Results.File(path, "application/octet-stream", fileDownloadName: name)
+                : Results.NotFound());
+
         // Server.Urls entries backed by a file (the DLC package and friends), streamed with range
         // support so an interrupted download can resume.
         app.MapMethods("/files/{name}", ["GET", "HEAD"], (string name, IOptionsMonitor<ServerOptions> options) =>

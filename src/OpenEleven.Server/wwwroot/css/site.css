@@ -721,3 +721,15 @@ button.small, .button.small { padding: 5px 10px; font-size: 11px; }
     .long { display: none; }
     .short { display: inline; }
 }
+
+/* /tools: a block of text to copy, such as the hosts-file lines */
+.codeblock {
+    margin: 12px 0;
+    padding: 12px 14px;
+    overflow-x: auto;
+    background: rgba(0, 0, 0, .35);
+    border: 1px solid var(--line, rgba(255, 255, 255, .12));
+    border-radius: 6px;
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+    user-select: all;
+}

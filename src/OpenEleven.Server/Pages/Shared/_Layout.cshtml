@@ -44,6 +44,10 @@
                 <a href="/players" aria-current="@Current("players")">Players</a>
                 <a href="/matches" aria-current="@Current("matches")">Matches</a>
                 <a href="/register" aria-current="@Current("register")">Register</a>
+                @if (Game == GameProfile.Pes2013Pc)
+                {
+                    <a href="/tools" aria-current="@Current("tools")">Downloads</a>
+                }
             }
         </nav>
     </div>

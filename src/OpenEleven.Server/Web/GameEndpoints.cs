@@ -12,6 +12,9 @@ namespace OpenEleven.Server.Web;
 
 public static class GameEndpoints
 {
+    /// <summary>Logger category for the NTL endpoints.</summary>
+    public sealed class NtlLog;
+
     public static IEndpointRouteBuilder MapGameEndpoints(this IEndpointRouteBuilder app)
     {
         // Account creation for scripts and tools. The browser form lives at GET/POST
@@ -40,6 +43,54 @@ public static class GameEndpoints
                         outcome.Account.Id, outcome.Account.GameId, outcome.Account.RegCode)),
             };
         }).WithMetadata(new SensitiveBodyAttribute()).RequireRateLimiting(HttpRateLimits.Register);
+
+        // PES 2013's NTL library (NAT traversal) posts here before it leaves the menu. The request
+        // is req=<hex of {"titleCode","locale","version","extra"}>. The reply is KEY:value lines, as
+        // captured from a running community server (nginx, text/plain): STATUS, API_STATUS, LOG_ACTIVE,
+        // SERVER_TIME and PUT_LOG_URL. With LOG_ACTIVE:1 the client posts its own NTL log to
+        // PUT_LOG_URL, which is logged here as a debugging aid.
+        // Lines end in CRLF: with the reference's 13-character address the reply is 117 bytes, the
+        // Content-Length it sent.
+        app.MapPost("/ntl/api/GateInfo.php", async (HttpContext http, ILogger<GameEndpoints.NtlLog> log, State.ServerCatalog catalog) =>
+        {
+            var form = await http.Request.ReadFormAsync(http.RequestAborted);
+            var hex = form["req"].ToString();
+            var request = "";
+            try { request = Encoding.UTF8.GetString(Convert.FromHexString(hex)); } catch (FormatException) { }
+
+            var reply =
+                "STATUS:200\r\n" +
+                "API_STATUS:1\r\n" +
+                "LOG_ACTIVE:1\r\n" +
+                $"SERVER_TIME:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}\r\n" +
+                $"PUT_LOG_URL:http://{catalog.AdvertiseIp}/ntl/api/PutLog.php\r\n";
+            log.LogInformation("NTL GateInfo request {Request}", request);
+            return Results.Text(reply, "text/plain", Encoding.UTF8);
+        });
+
+        // PES 2013's menu news: pes2013.exe holds http://info.service.konamionline.com/ME287-E1/info/
+        // and a community server answers it with plain text (LF line endings, text/plain). The path is
+        // all that is matched, so this works whatever host name the client's hosts file maps here.
+        // ponytail: the exact request the client makes (query string, suffix) is not observed yet.
+        app.MapGet("/ME287-E1/info/{**rest}", (IOptionsMonitor<ServerOptions> options) =>
+            Results.Text(
+                "Welcome to the Open Eleven server.\n\n" +
+                "This server is not affiliated with Konami.\n" +
+                "It is an unofficial, experimental server for PES 2013.\n",
+                "text/plain", Encoding.UTF8));
+
+        // The NTL log the client uploads when GateInfo says LOG_ACTIVE:1. Body is logged (capped);
+        // nothing is stored.
+        app.MapPost("/ntl/api/PutLog.php", async (HttpContext http, ILogger<GameEndpoints.NtlLog> log) =>
+        {
+            if (http.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+                limit.MaxRequestBodySize = 256 * 1024;
+            using var reader = new StreamReader(http.Request.Body, Encoding.UTF8);
+            var buffer = new char[16 * 1024];
+            var read = await reader.ReadBlockAsync(buffer, http.RequestAborted);
+            log.LogInformation("NTL PutLog from {Remote}: {Body}", http.Connection.RemoteIpAddress, new string(buffer, 0, read));
+            return Results.Text("STATUS:200\r\nAPI_STATUS:1\r\n", "text/plain", Encoding.UTF8);
+        });
 
         // Server.Urls entries backed by a file (the DLC package and friends), streamed with range
         // support so an interrupted download can resume.

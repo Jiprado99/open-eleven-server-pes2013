@@ -39,11 +39,13 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
     {
         var player = await players.GetAsync(ctx.Session.Pid, ctx.CancellationToken);
         var saved = (player?.QuickMatchOptions ?? "").Split(',');
-        string At(int i, string fallback) => saved.Length == OptionKeys.Length && saved[i] != "" ? saved[i] : fallback;
+        var keys = KeysFor(ctx.Profile);
+        string At(int i, string fallback) => saved.Length == keys.Length && saved[i] != "" ? saved[i] : fallback;
 
+        // PES 2013's keys are all NO|YES flags (no opp_lang), so nothing defaults to ANY there.
         var reply = ctx.Ok();
-        for (var i = 0; i < OptionKeys.Length; i++)
-            reply.Set(OptionKeys[i], At(i, i == 0 ? "ANY" : "NO"));
+        for (var i = 0; i < keys.Length; i++)
+            reply.Set(keys[i], At(i, i == 0 && ctx.Profile != GameProfile.Pes2013Pc ? "ANY" : "NO"));
         return [reply];
     }
 
@@ -53,7 +55,7 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
     {
         if (await players.GetAsync(ctx.Session.Pid, ctx.CancellationToken) is { } player)
         {
-            player.QuickMatchOptions = string.Join(',', OptionKeys.Select(k => ctx.Request.GetString(k) ?? ""));
+            player.QuickMatchOptions = string.Join(',', KeysFor(ctx.Profile).Select(k => ctx.Request.GetString(k) ?? ""));
             await players.SaveAsync(ctx.CancellationToken);
         }
 
@@ -61,6 +63,15 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
     }
 
     private static readonly string[] OptionKeys = ["opp_lang", "oc_is_rating_rank", "oc_is_rating_free", "ml_is_division"];
+
+    /// <summary>
+    /// pes2013.exe's CMD_GET/SET_QUICKMATCHOPTION name three keys instead (is_rating, is_pass_level,
+    /// is_team_power, read from the exe's strings; their values are assumed NO|YES like the others).
+    /// ponytail: unconfirmed value type; the quick-match search itself still uses the 2011 options.
+    /// </summary>
+    private static readonly string[] Options2013 = ["is_rating", "is_pass_level", "is_team_power"];
+
+    private static string[] KeysFor(GameProfile profile) => profile == GameProfile.Pes2013Pc ? Options2013 : OptionKeys;
 
     [Command("CMD_SEND_QUICK_GAMEBEGINNING_HOPE", Roles = Roles)]
     [Command("CMD_CANCEL_QUICK_GAMEBEGINNING_HOPE", Roles = Roles)]
@@ -95,7 +106,7 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
         // The saved options: opp_lang, then the rating filters for Rank and Free.
         var player = await players.GetAsync(ctx.Session.Pid, ctx.CancellationToken);
         var saved = (player?.QuickMatchOptions ?? "").Split(',');
-        string Saved(int i) => saved.Length == OptionKeys.Length ? saved[i] : "";
+        string Saved(int i) => saved.Length == KeysFor(ctx.Profile).Length && i < saved.Length ? saved[i] : "";
         var seeker = new QuickSeeker(ctx.Session, ctx.Rqid, type, playerNum, gameTime, frrate,
             $"{type}|{playerNum}|{gameTime}|{frrate}")
         {

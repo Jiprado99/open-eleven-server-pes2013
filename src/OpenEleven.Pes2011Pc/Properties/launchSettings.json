@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "OpenEleven.Pes2011Pc": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:52160;http://localhost:52163"
+    }
+  }
+}

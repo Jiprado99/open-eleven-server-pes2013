@@ -124,6 +124,70 @@ public sealed class ModernLobbyHandlers(
     }
 
     /// <summary>
+    /// PES 2013's version of <see cref="SendIpAndPort"/>: its NTL library reports the NAT type and three
+    /// {address_family, sa_data} endpoints (host, reflexive, relayed). Kept as sent, because the room
+    /// roster hands them to the other members for the peer-to-peer connection.
+    /// </summary>
+    [Command("CMD_SEND_IPANDPORT_NTL", Roles = ServiceRole.Menu, Profiles = GameProfile.Pes2013Pc)]
+    public ValueTask<KvMessage[]> SendIpAndPortNtl(CommandContext ctx)
+    {
+        var s = ctx.Session;
+        s.NtlNatType = ctx.Request.GetInt32("ntl_nat_type", s.NtlNatType);
+        s.NtlHostAddr = ctx.Request.GetValue("host_addr") as KvMessage ?? s.NtlHostAddr;
+        s.NtlReflexiveAddr = ctx.Request.GetValue("reflexive_addr") as KvMessage ?? s.NtlReflexiveAddr;
+        s.NtlRelayedAddr = ctx.Request.GetValue("relayed_addr") as KvMessage ?? s.NtlRelayedAddr;
+        log.LogInformation("pid {Pid} NTL nat=0x{Nat:X8} host={Host} reflexive={Reflexive}",
+            s.Pid, s.NtlNatType, s.NtlHostAddr?.GetString("sa_data"), s.NtlReflexiveAddr?.GetString("sa_data"));
+        return Reply.Of(ctx.Ok());
+    }
+
+    /// <summary>
+    /// The NTL report of another player (request: pid), asked for right after joining a room. Answered
+    /// with the peer's stored report; a bare NOERR left the client with no endpoint to connect to.
+    /// </summary>
+    [Command("CMD_GET_IPANDPORT_NTL", Roles = ServiceRole.Menu, Profiles = GameProfile.Pes2013Pc)]
+    public ValueTask<KvMessage[]> GetIpAndPortNtl(CommandContext ctx)
+    {
+        var pid = ctx.Request.GetInt32("pid", 0);
+        var peer = ctx.Hub.SessionsForPid(pid).FirstOrDefault(s => s.Role == ServiceRole.Menu && s.NtlHostAddr is not null);
+        return peer is null
+            ? Reply.Of(ctx.Fail("ERR_NOPLAYER"))
+            : Reply.Of(ListWatchEntries.NtlPeerInfo(ctx.Ok(), peer));
+    }
+
+    /// <summary>
+    /// A one-line message from one player to others (pid_list, data), which PES 2013 sends about once a
+    /// second to the other member while a room is being joined: pid 1 sent pid_list=[2],data="1" and pid 2
+    /// pid_list=[1],data="2". Nothing relayed it, so both stayed on "Establishing connection" until the
+    /// match room failed. Delivered as CMD_WATCH_NOTICE (from_pid, data), the pair the exe's strings show.
+    /// </summary>
+    /// <remarks>
+    /// ponytail: the WATCH_NOTICE keys are read from the exe's strings, not from a live capture. An empty
+    /// pid_list (the same command is sent in the block) delivers to nobody.
+    /// </remarks>
+    [Command("CMD_SEND_NOTICE", Roles = ServiceRole.Menu, Profiles = GameProfile.Pes2013Pc)]
+    public ValueTask<KvMessage[]> SendNotice(CommandContext ctx)
+    {
+        var data = ctx.Request.GetString("data") ?? "";
+        if (ctx.Request.GetValue("pid_list") is KvArray list)
+        {
+            foreach (var item in list.Values)
+            {
+                var text = item is KvRaw raw ? raw.Text : Convert.ToString(item, System.Globalization.CultureInfo.InvariantCulture);
+                if (!int.TryParse(text, out var pid) || pid <= 0 || pid == ctx.Session.Pid)
+                    continue;
+
+                foreach (var target in ctx.Hub.SessionsForPid(pid).Where(s => s.Role == ServiceRole.Menu))
+                    target.Push(KvMessage.Ok("CMD_WATCH_NOTICE", Hub.UnsolicitedRqid)
+                        .Set("from_pid", ctx.Session.Pid)
+                        .Set("data", data));
+            }
+        }
+
+        return Reply.Of(ctx.Ok());
+    }
+
+    /// <summary>
     /// Entering the online lobby (FUN_005f0030 sends <c>lobby_id</c> from CMD_GET_LOBBYLIST). The
     /// client only waits for the reply; ERR_LOBBYUSERMAX is the one refusal it knows.
     /// </summary>
@@ -167,6 +231,9 @@ public sealed class ModernLobbyHandlers(
     /// at most 8 entries).
     /// </summary>
     [Command("CMD_REQWATCHL_ROOMPLAYERLIST", Roles = ServiceRole.Menu, Profiles = GameProfiles.Modern)]
+    // PES 2013 asks for the same roster under this name (room_id, listnum_name, list_name, listid_name=pid,
+    // list_max=8); a bare NOERR made the joiner leave the room on its own 117 ms later.
+    [Command("CMD_REQWATCHL_ROOMPLAYERLIST_NTL", Roles = ServiceRole.Menu, Profiles = GameProfile.Pes2013Pc)]
     public ValueTask<KvMessage[]> WatchRoomPlayers(CommandContext ctx)
     {
         var room = ctx.Hub.FindRoom(ctx.Request.GetInt32("room_id", ctx.Session.RoomId ?? 0));

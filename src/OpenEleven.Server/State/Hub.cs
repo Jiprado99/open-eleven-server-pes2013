@@ -541,13 +541,16 @@ public sealed class Hub(ILogger<Hub> log, IOptionsMonitor<ServerOptions> options
 
             foreach (var peer in members.Where(peer => peer.Pid != recipient.Pid))
             {
+                // PES 2013 exchanges the NTL report under the _NTL name instead of ex_/in_ addresses.
                 var endpoints = EndpointsFor(recipient, peer);
-                var update = KvMessage.Ok("CMD_WATCH_IPANDPORT", rqid)
-                    .Set("ex_ip", endpoints.ExternalIp)
-                    .Set("ex_port", endpoints.ExternalPort)
-                    .Set("in_ip", endpoints.InternalIp)
-                    .Set("in_port", endpoints.InternalPort)
-                    .Set("pid", peer.Pid);
+                var update = options.CurrentValue.GameProfile == GameProfile.Pes2013Pc
+                    ? ListWatchEntries.NtlPeerInfo(KvMessage.Ok("CMD_WATCH_IPANDPORT_NTL", rqid), peer)
+                    : KvMessage.Ok("CMD_WATCH_IPANDPORT", rqid)
+                        .Set("ex_ip", endpoints.ExternalIp)
+                        .Set("ex_port", endpoints.ExternalPort)
+                        .Set("in_ip", endpoints.InternalIp)
+                        .Set("in_port", endpoints.InternalPort)
+                        .Set("pid", peer.Pid);
                 if (recipient.Push(update))
                     sent++;
             }

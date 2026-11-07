@@ -124,6 +124,15 @@ public sealed class Session
     public string InternalIp { get; set; } = "127.0.0.1";
     public int InternalPort { get; set; }
 
+    /// <summary>
+    /// PES 2013's NTL report from CMD_SEND_IPANDPORT_NTL: the NAT type and the host, reflexive and
+    /// relayed endpoints ({address_family, sa_data} records), handed to the other room members as is.
+    /// </summary>
+    public int NtlNatType { get; set; }
+    public OpenEleven.Protocol.Kv.KvMessage? NtlHostAddr { get; set; }
+    public OpenEleven.Protocol.Kv.KvMessage? NtlReflexiveAddr { get; set; }
+    public OpenEleven.Protocol.Kv.KvMessage? NtlRelayedAddr { get; set; }
+
     public int DesiredPositionMask { get; set; }
 
     /// <summary>

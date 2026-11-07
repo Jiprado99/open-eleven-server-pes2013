@@ -24,13 +24,14 @@ public static class TitleProfiles
 
     /// <summary>
     /// The team ids a title's team-select screen accepts (useable_team_id[]). Team ids differ per
-    /// title; PES 2013 has not been read yet and gets none.
+    /// title; PES 2013's table has not been read yet, so it gets the ids common to 2011 and 2012.
     /// </summary>
     public static int[] UseableTeams(GameProfile profile) => profile switch
     {
         GameProfile.Pes2010Pc => Pes2010Teams,
         GameProfile.Pes2011Pc => Pes2011Teams,
         GameProfile.Pes2012Pc => Pes2012Teams,
+        GameProfile.Pes2013Pc => Pes2013Teams,
         _ => [],
     };
 
@@ -89,6 +90,15 @@ public static class TitleProfiles
         141, 142, 869, 1408, 1409, 1796, 1797, 1798, 1799, 1800, 1801, 1802, 1803, 1810, 1811, 1812, 1813,
         1709, 1710, 1711, 1712, 1713, 2311, 2312, 2313, 2314, 2315, 2316, 2364,
     ];
+
+    /// <summary>
+    /// PES 2013's team ids have not been read from its team table. With an empty useable_team_id[] both
+    /// clients forfeit the moment the host starts the match (seen in a live 2013 run: both sent
+    /// CMD_SET_FORFEITEDGAMEEND right after CMD_SET_GAMEMEMBER). As a first approximation this takes the
+    /// ids present in BOTH the PES 2011 and PES 2012 tables, the ones most likely to still exist.
+    /// ponytail: a guess. Replace with the real 2013 team table once it is read from the exe.
+    /// </summary>
+    private static readonly int[] Pes2013Teams = Pes2012Teams.Intersect(Pes2011Teams).ToArray();
 
     /// <summary>
     /// Every team of retail PES 2010 in categories 8 (national), 0x16 (club) and 0x20 (classic),

@@ -112,6 +112,33 @@ public static class ListWatchEntries
     /// </summary>
     public static KvMessage RoomPlayerEntry(Session member, PeerEndpoints at, GameProfile profile)
     {
+        // pes2013.exe's roomplayer_list key table: name, room_player_id, host_addr, reflexive_addr,
+        // relayed_addr, ntl_nat_type, nickname_id, contribution_prize, team_match_nice_num,
+        // evaluation_average, stats, game_entry_no, is_team_data_load, side. The 2012 ex_ip/in_ip,
+        // desiredPosition, room_entry_no and gameplayer_name keys are not in that exe at all.
+        // ponytail: from the exe's strings only. The value of stats (a win/draw/lose record, going by the
+        // community screens) and of is_team_data_load (TRUE|FALSE assumed) are guesses.
+        if (profile == GameProfile.Pes2013Pc)
+        {
+            static KvMessage Zero() => new KvMessage().Set("address_family", 1).Set("sa_data", "0000000000000000000000000000");
+            return new KvMessage()
+                .Set("pid", member.Pid)
+                .Set("name", member.PlayerName)
+                .Set("room_player_id", member.Pid)
+                .Set("host_addr", member.NtlHostAddr ?? Zero())
+                .Set("reflexive_addr", member.NtlReflexiveAddr ?? Zero())
+                .Set("relayed_addr", member.NtlRelayedAddr ?? Zero())
+                .Set("ntl_nat_type", member.NtlNatType)
+                .Set("nickname_id", 0)
+                .Set("contribution_prize", 0)
+                .Set("team_match_nice_num", 0)
+                .Set("evaluation_average", 0)
+                .Set("stats", new KvMessage().Set("win_count", 0).Set("draw_count", 0).Set("lose_count", 0))
+                .Set("game_entry_no", member.GameEntryNo)
+                .Set("is_team_data_load", "FALSE")
+                .Set("side", member.GameSide == 1 ? "AWAY" : "HOME");
+        }
+
         var entry = new KvMessage()
             .Set("pid", member.Pid)
             .Set("room_player_id", member.Pid)
@@ -145,6 +172,22 @@ public static class ListWatchEntries
         return entry.Set("desiredPosition", KvArray.Repeat("NO", 13));
     }
 
+    /// <summary>
+    /// A peer's NTL report (nat type and host / reflexive / relayed endpoints) as PES 2013 exchanges it:
+    /// CMD_GET_IPANDPORT_NTL and CMD_WATCH_IPANDPORT_NTL carry the same keys as CMD_SEND_IPANDPORT_NTL.
+    /// ponytail: key set taken from CMD_SEND_IPANDPORT_NTL and the exe's strings, not a live capture.
+    /// </summary>
+    public static KvMessage NtlPeerInfo(KvMessage target, Session peer)
+    {
+        static KvMessage Zero() => new KvMessage().Set("address_family", 1).Set("sa_data", "0000000000000000000000000000");
+        return target
+            .Set("pid", peer.Pid)
+            .Set("ntl_nat_type", peer.NtlNatType)
+            .Set("host_addr", peer.NtlHostAddr ?? Zero())
+            .Set("reflexive_addr", peer.NtlReflexiveAddr ?? Zero())
+            .Set("relayed_addr", peer.NtlRelayedAddr ?? Zero());
+    }
+
     /// <summary>Makes a PES 2010 style block entry acceptable to the 2011 parser.</summary>
     public static KvMessage BlockPlayerEntry(KvMessage e, GameProfile profile)
     {
@@ -170,6 +213,25 @@ public static class ListWatchEntries
             e.Set("gameplayer_id", 0);
         }
 
+        // pes2013.exe's blockplayer_list key table is name, skill_level, nickname_id, room_id, rating,
+        // kind, lang, npid, xuid, is_restricted: the 2012 selfreport_level is gone (the string is not in
+        // the exe) and skill_level, with the enum below, takes its place. Without these two keys the
+        // entry is most likely skipped, as in 2012.
+        // ponytail: from the exe's strings only; not yet checked against a live 2013 client.
+        if (profile == GameProfile.Pes2013Pc)
+        {
+            e.Set("skill_level", SkillLevel2013(e.GetString("selfreport_level")));
+            e.Set("nickname_id", 0);
+        }
+
         return e;
     }
+
+    /// <summary>pes2013.exe's skill enum (its string table lists exactly these six values).</summary>
+    private static readonly string[] SkillLevels2013 =
+        ["BEGINNER", "AMATEUR", "STANDARD", "PROFESSIONAL", "TOPPLAYER", "SUPERSTAR"];
+
+    /// <summary>The stored 2012-era value (default "PRO") is not in the 2013 enum; anything unknown becomes STANDARD.</summary>
+    internal static string SkillLevel2013(string? stored)
+        => stored is not null && SkillLevels2013.Contains(stored, StringComparer.Ordinal) ? stored : "STANDARD";
 }

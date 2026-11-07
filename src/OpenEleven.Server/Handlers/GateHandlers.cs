@@ -87,13 +87,24 @@ public sealed class GateHandlers(
     /// </summary>
     [Command("CMD_GET_SERVER_ENV", Roles = ServiceRole.All, Profiles = GameProfiles.Since2012, RequiredState = SessionState.Connected)]
     public ValueTask<KvMessage[]> GetServerEnv(CommandContext ctx)
-        => Reply.Of(ctx.Ok()
+    {
+        var reply = ctx.Ok()
             .Set("normalend_all_rate_level", 0)
             .Set("normalend_10_rate_level", 0)
             .Set("manner_warning_at_login", 0)
             .Set("manner_warning_at_result", 0)
             .Set("commu_member_limited_max_num", 50)
-            .Set("commu_topic_limited_max_num", 100));
+            .Set("commu_topic_limited_max_num", 100);
+
+        // pes2013.exe reads two more keys right after these: ntl_allow_rtt_peak and ntl_allow_rtt_avg,
+        // the round-trip limits its NTL peer check allows. Unit and meaning are not confirmed, so both
+        // are generous: if 0 means "no limit" nothing changes, and if it meant "none allowed" this fixes it.
+        // ponytail: guessed values; tune once a live client shows what it does with them.
+        if (ctx.Profile == GameProfile.Pes2013Pc)
+            reply.Set("ntl_allow_rtt_peak", 1000).Set("ntl_allow_rtt_avg", 500);
+
+        return Reply.Of(reply);
+    }
 
     [Command("CMD_GET_SVRVERSION", Roles = AnyServiceRole, RequiredState = SessionState.Connected)]
     public ValueTask<KvMessage[]> GetVersion(CommandContext ctx)

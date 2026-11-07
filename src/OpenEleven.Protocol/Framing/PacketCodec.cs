@@ -52,7 +52,7 @@ public sealed class PacketCodec
 
         var data = new byte[length];
         buffer.Slice(HeaderSize, length).CopyTo(data);
-        xor.Transform(data, offset: HeaderSize);
+        xor.Transform(data.AsSpan(), offset: HeaderSize);
 
         if (!VerifyHash(header[..PrefixSize], data, header.Slice(PrefixSize, HashSize)))
             throw new ProtocolException(

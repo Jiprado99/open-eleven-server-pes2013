@@ -46,7 +46,9 @@ public sealed class XorCipher
     public byte[] Transform(ReadOnlySpan<byte> buffer, int offset = 0)
     {
         var copy = buffer.ToArray();
-        Transform(copy, offset);
+        // Explicit Span<byte>: with C# 14 a byte[] argument binds to this ReadOnlySpan overload
+        // and recurses forever.
+        Transform(copy.AsSpan(), offset);
         return copy;
     }
 }

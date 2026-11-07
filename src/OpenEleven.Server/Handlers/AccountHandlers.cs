@@ -352,7 +352,7 @@ public sealed class AccountHandlers(
             ctx.Session.Id, player.Name, player.Pid);
 
         // KvMessage.Set appends, so the size is written exactly once.
-        var teams = TitleProfiles.UseableTeams(options.CurrentValue.GameProfile);
+        var teams = TitleProfiles.UseableTeams(options.CurrentValue.GameProfile, options.CurrentValue.Teams);
         var reply = ctx.Ok().Set("useable_team_size", teams.Length);
         if (teams.Length > 0)
             reply.Set("useable_team_id", new KvArray(teams.Cast<object?>().ToArray()));

@@ -67,6 +67,8 @@ public sealed class ServerOptions
     public CaptchaOptions Captcha { get; set; } = new();
     public DatabaseOptions Database { get; set; } = new();
     public ProtocolOptions Protocol { get; set; } = new();
+    public StunOptions Stun { get; set; } = new();
+    public TeamOptions Teams { get; set; } = new();
     public DebugOptions Debug { get; set; } = new();
 
     public ServiceEndpointOptions RequireService(ServiceRole role)
@@ -328,6 +330,41 @@ public sealed class DatabaseOptions
 
     /// <summary>Create the schema at startup when it does not exist.</summary>
     public bool AutoCreate { get; set; } = true;
+}
+
+/// <summary>
+/// Changes to the list of team ids the server tells clients they may pick (<c>useable_team_id</c>).
+/// Useful for a modded game that adds teams, or to hide some. The ids are those of the game's team
+/// list (Kitserver writes it as <c>teamlist.txt</c>); the client keeps at most 400.
+/// </summary>
+public sealed class TeamOptions
+{
+    /// <summary>Ids added to the built-in list. They go first, so they are never the ones cut at 400.</summary>
+    public int[] Include { get; set; } = [];
+
+    /// <summary>Ids removed from the built-in list.</summary>
+    public int[] Exclude { get; set; } = [];
+}
+
+/// <summary>
+/// The STUN responder (PES 2013 only). Both values matter when the players reach the server over a
+/// different network than the one <c>AdvertiseIp</c> names (for example Radmin/Hamachi 26.x.x.x while
+/// <c>AdvertiseIp</c> is a domain or the LAN address).
+/// </summary>
+public sealed class StunOptions
+{
+    /// <summary>
+    /// The server address the RFC 3489 reply names in SOURCE-ADDRESS / CHANGED-ADDRESS. Empty uses the
+    /// address <c>AdvertiseIp</c> resolves to.
+    /// </summary>
+    public string PublicAddress { get; set; } = "";
+
+    /// <summary>
+    /// Local address the UDP sockets bind to. Empty binds every interface, which on a host with several
+    /// (LAN + VPN) lets the OS pick the reply's source address; set it to the address the players use
+    /// to reach the server when replies come from the wrong one.
+    /// </summary>
+    public string BindAddress { get; set; } = "";
 }
 
 public sealed class ProtocolOptions

@@ -23,8 +23,7 @@ public static class TitleProfiles
     };
 
     /// <summary>
-    /// The team ids a title's team-select screen accepts (useable_team_id[]). Team ids differ per
-    /// title; PES 2013's table has not been read yet, so it gets the ids common to 2011 and 2012.
+    /// The team ids a title's team-select screen accepts (useable_team_id[]). Team ids differ per title.
     /// </summary>
     public static int[] UseableTeams(GameProfile profile) => profile switch
     {
@@ -34,6 +33,27 @@ public static class TitleProfiles
         GameProfile.Pes2013Pc => Pes2013Teams,
         _ => [],
     };
+
+    /// <summary>
+    /// The title's list with the operator's changes applied: <see cref="TeamOptions.Include"/> first (so a
+    /// mod's team survives the cut), then the built-in ids, minus <see cref="TeamOptions.Exclude"/>,
+    /// without duplicates and at most <see cref="MaxUseableTeams"/> (what the client keeps).
+    /// </summary>
+    public static int[] UseableTeams(GameProfile profile, TeamOptions? teams)
+    {
+        var builtIn = UseableTeams(profile);
+        if (teams is null || (teams.Include.Length == 0 && teams.Exclude.Length == 0))
+            return builtIn;
+
+        return teams.Include.Concat(builtIn)
+            .Where(id => id > 0 && !teams.Exclude.Contains(id))
+            .Distinct()
+            .Take(MaxUseableTeams)
+            .ToArray();
+    }
+
+    /// <summary>The client keeps at most this many ids from useable_team_id[] (FUN_00513610, FUN_0053bfd0).</summary>
+    public const int MaxUseableTeams = 400;
 
     /// <summary>
     /// Every team of retail PES 2011: categories 8 (national), 0x15 (club) and 0x1f (classic),
@@ -92,13 +112,44 @@ public static class TitleProfiles
     ];
 
     /// <summary>
-    /// PES 2013's team ids have not been read from its team table. With an empty useable_team_id[] both
-    /// clients forfeit the moment the host starts the match (seen in a live 2013 run: both sent
-    /// CMD_SET_FORFEITEDGAMEEND right after CMD_SET_GAMEMEMBER). As a first approximation this takes the
-    /// ids present in BOTH the PES 2011 and PES 2012 tables, the ones most likely to still exist.
-    /// ponytail: a guess. Replace with the real 2013 team table once it is read from the exe.
+    /// The teams of PES 2013 with the PESEdit 2013 Patch 6.0 installed, taken from the team list the
+    /// game itself writes (Kitserver's teamlist.txt, 461 entries) and the kit map of its GDB. Chosen
+    /// in this order, up to the 400 ids the client keeps (see the 2011 and 2012 tables):
+    /// national teams, classic teams, clubs that have a kit in the GDB, then the other clubs by id.
+    /// Left out: ids the game lists as (null), the Master League placeholders and fictional teams
+    /// (MASTERLEAGUE*, ML NEWFACE*, TERZAMOC, CHEQUEBERO, NAHUANOZEM), and the 18 clubs that did
+    /// not fit, which are mostly lower-division slots (ids 4000+) that PESEDIT fills per league.
+    /// Server:Teams:Include / Exclude adjust the list without a rebuild.
     /// </summary>
-    private static readonly int[] Pes2013Teams = Pes2012Teams.Intersect(Pes2011Teams).ToArray();
+    private static readonly int[] Pes2013Teams =
+    [
+        // National teams.
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30,
+        31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 1009,
+        1010, 1011, 1012, 1013, 1015, 1017, 1022, 1026, 1031, 1032, 1040, 1041, 1051, 1058, 1059, 1067, 1083, 1099,
+        1113, 1128, 1129, 1141, 1164, 1170, 1184, 1550, 1551,
+        // Classic teams.
+        902, 903, 904, 905, 906, 907, 908,
+        // Clubs with a kit in the GDB, the teams a player is most likely to pick.
+        100, 101, 102, 103, 105, 106, 107, 108, 109, 110, 111, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
+        124, 125, 127, 130, 131, 133, 134, 135, 136, 137, 139, 172, 173, 174, 177, 178, 179, 181, 184, 186, 190, 191,
+        192, 193, 194, 195, 196, 197, 198, 199, 200, 207, 209, 210, 213, 215, 218, 234, 240, 242, 250, 252, 258, 259,
+        260, 261, 263, 265, 266, 268, 269, 273, 274, 320, 321, 327, 333, 362, 370, 388, 391, 395, 396, 399, 400, 418,
+        1207, 1208, 1212, 1217, 1218, 1232, 1244, 1245, 1246, 1247, 1248, 1249, 1250, 1252, 1254, 1255, 1327, 1695,
+        1746, 1804, 1909, 1921, 1924, 1931, 1932, 1935, 1944, 1972, 1974, 1976, 1978, 1979, 1981, 1986, 2000, 2001,
+        2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
+        2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2240, 2241, 2242,
+        2243, 2244, 2245, 2246, 2247, 2248, 2249, 2250, 2251, 2252, 2253, 2254, 2293, 2294, 2295, 2296, 2297, 2298,
+        2308, 2344, 2345, 2346, 2347, 2348, 2349, 2350, 2351, 2352, 2353, 2354, 2355, 2356, 2357, 2367, 2368, 2376,
+        2383, 2387, 2388, 2451, 2453, 4001, 4002, 4004, 4005, 4006, 4007, 4009, 4012, 4018, 4019, 4020, 4021, 4022,
+        4023, 4024, 4025, 4026, 4027, 4028, 4029, 4030, 4031, 4032, 4034, 4035, 4037, 4039, 4040, 4041, 4042, 4043,
+        4044, 4045, 4046, 4047, 4049, 4050, 4051, 4052, 4053, 4054, 4055, 4056, 4057, 4058, 4059, 4060, 4061, 4062,
+        4063, 4064, 4065, 4066, 4067, 4068, 4069, 4070, 4071, 4072, 4073, 4074, 4075, 4076, 4077, 4078, 4079, 4080,
+        4081, 4082, 4083, 4084, 4085, 4086, 4087,
+        // Remaining clubs in id order, up to the 400-entry limit.
+        175, 188, 217, 219, 221, 238, 241, 243, 244, 245, 246, 247, 248, 251, 254, 255, 256, 270, 323, 328, 349, 355,
+        366, 414, 415, 420, 1203, 1253, 1260, 1329, 1330, 1528, 1765, 1796, 1929,
+    ];
 
     /// <summary>
     /// Every team of retail PES 2010 in categories 8 (national), 0x16 (club) and 0x20 (classic),

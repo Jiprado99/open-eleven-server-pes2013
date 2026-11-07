@@ -90,7 +90,7 @@ public sealed class CompetitionHandlers(
         if (Find(ctx.Request.GetInt32("compe_id", 0)) is not { } c)
             return [ctx.Fail("ERR_COMPE_NOTFOUND")];
 
-        var teams = TitleProfiles.UseableTeams(options.CurrentValue.GameProfile);
+        var teams = TitleProfiles.UseableTeams(options.CurrentValue.GameProfile, options.CurrentValue.Teams);
         var data = (await Summary(c, ctx.CancellationToken))
             .Set("use_national", "TRUE")
             .Set("use_club", "TRUE")

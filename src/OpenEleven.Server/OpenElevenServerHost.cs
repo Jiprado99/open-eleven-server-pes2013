@@ -69,7 +69,7 @@ public static class OpenElevenServerHost
             pages.Conventions.AuthorizeFolder("/Admin");
             pages.Conventions.AllowAnonymousToPage("/Admin/Login");
             pages.Conventions.AddFolderApplicationModelConvention("/Admin", page => page.Filters.Add(new AdminPortalFilter()));
-        });
+        }).AddApplicationPart(typeof(OpenElevenServerHost).Assembly);
         builder.Services.AddHttpRateLimits();
 
         // The public pages read whole tables; a few seconds of staleness keeps that off the database.
@@ -115,6 +115,16 @@ public static class OpenElevenServerHost
                 sp.GetRequiredService<IOptionsMonitor<ServerOptions>>(),
                 sp.GetRequiredService<ILoggerFactory>()));
         }
+
+        // PES 2013's NTL library needs an RFC 5389 STUN, and the classic RFC 3489 clients (PES 6) fix the
+        // same port 3478, so one responder answers both by the request's magic cookie (experimental).
+        // A port that is already taken is logged and skipped.
+        if (profile == GameProfile.Pes2013Pc)
+            builder.Services.AddSingleton<IHostedService>(sp => new StunListener(
+                [3478, 3479],
+                System.Net.IPAddress.TryParse(sp.GetRequiredService<ServerCatalog>().ServerAddress, out var stunAddress)
+                    ? stunAddress : System.Net.IPAddress.Any,
+                sp.GetRequiredService<ILogger<StunListener>>()));
 
         // Kestrel serves the small HTTP surface the client fetches before logging in: HTTPS, or
         // plain HTTP on 80 when Https.Enabled is false (local development). With HTTPS there is

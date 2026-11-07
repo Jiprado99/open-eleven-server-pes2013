@@ -136,8 +136,17 @@ public sealed class ModernLobbyHandlers(
         s.NtlHostAddr = ctx.Request.GetValue("host_addr") as KvMessage ?? s.NtlHostAddr;
         s.NtlReflexiveAddr = ctx.Request.GetValue("reflexive_addr") as KvMessage ?? s.NtlReflexiveAddr;
         s.NtlRelayedAddr = ctx.Request.GetValue("relayed_addr") as KvMessage ?? s.NtlRelayedAddr;
-        log.LogInformation("pid {Pid} NTL nat=0x{Nat:X8} host={Host} reflexive={Reflexive}",
-            s.Pid, s.NtlNatType, s.NtlHostAddr?.GetString("sa_data"), s.NtlReflexiveAddr?.GetString("sa_data"));
+
+        // The client's STUN reply can be missing (reflexive all zeros): fall back to the address the
+        // server sees this player on. Peers are told this value, so log when it was substituted.
+        var reflexive = NtlAddress.FillReflexive(s.NtlReflexiveAddr, s.NtlHostAddr, s.Remote.Address);
+        if (!ReferenceEquals(reflexive, s.NtlReflexiveAddr))
+            log.LogWarning("pid {Pid} NTL reflexive_addr was empty (STUN reply never reached the client?); using {Remote}",
+                s.Pid, s.Remote.Address);
+        s.NtlReflexiveAddr = reflexive;
+
+        log.LogInformation("pid {Pid} NTL nat=0x{Nat:X8} host={Host} reflexive={Reflexive} tcp={Remote}",
+            s.Pid, s.NtlNatType, s.NtlHostAddr?.GetString("sa_data"), s.NtlReflexiveAddr?.GetString("sa_data"), s.Remote.Address);
         return Reply.Of(ctx.Ok());
     }
 
@@ -152,7 +161,7 @@ public sealed class ModernLobbyHandlers(
         var peer = ctx.Hub.SessionsForPid(pid).FirstOrDefault(s => s.Role == ServiceRole.Menu && s.NtlHostAddr is not null);
         return peer is null
             ? Reply.Of(ctx.Fail("ERR_NOPLAYER"))
-            : Reply.Of(ListWatchEntries.NtlPeerInfo(ctx.Ok(), peer));
+            : Reply.Of(ListWatchEntries.NtlPeerInfo(ctx.Ok(), peer, ctx.Session));
     }
 
     /// <summary>

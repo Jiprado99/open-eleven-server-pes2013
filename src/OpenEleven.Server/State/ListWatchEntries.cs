@@ -177,15 +177,14 @@ public static class ListWatchEntries
     /// CMD_GET_IPANDPORT_NTL and CMD_WATCH_IPANDPORT_NTL carry the same keys as CMD_SEND_IPANDPORT_NTL.
     /// ponytail: key set taken from CMD_SEND_IPANDPORT_NTL and the exe's strings, not a live capture.
     /// </summary>
-    public static KvMessage NtlPeerInfo(KvMessage target, Session peer)
+    public static KvMessage NtlPeerInfo(KvMessage target, Session peer, Session? viewer = null)
     {
-        static KvMessage Zero() => new KvMessage().Set("address_family", 1).Set("sa_data", "0000000000000000000000000000");
         return target
             .Set("pid", peer.Pid)
             .Set("ntl_nat_type", peer.NtlNatType)
-            .Set("host_addr", peer.NtlHostAddr ?? Zero())
-            .Set("reflexive_addr", peer.NtlReflexiveAddr ?? Zero())
-            .Set("relayed_addr", peer.NtlRelayedAddr ?? Zero());
+            .Set("host_addr", NtlAddress.HostFor(viewer, peer) ?? NtlAddress.Zero())
+            .Set("reflexive_addr", peer.NtlReflexiveAddr ?? NtlAddress.Zero())
+            .Set("relayed_addr", peer.NtlRelayedAddr ?? NtlAddress.Zero());
     }
 
     /// <summary>Makes a PES 2010 style block entry acceptable to the 2011 parser.</summary>

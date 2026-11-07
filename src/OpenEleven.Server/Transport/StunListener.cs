@@ -26,7 +26,8 @@ namespace OpenEleven.Server.Transport;
 /// example by stun.py) is logged and skipped. The RFC 3489 side has been checked against the reference
 /// server's bytes, not yet against a live PES 6 client.
 /// </remarks>
-public sealed class StunListener(int[] ports, IPAddress publicAddress, ILogger<StunListener> log) : BackgroundService
+public sealed class StunListener(
+    int[] ports, IPAddress publicAddress, ILogger<StunListener> log, IPAddress? bindAddress = null) : BackgroundService
 {
     private const uint MagicCookie = 0x2112A442;
 
@@ -38,8 +39,9 @@ public sealed class StunListener(int[] ports, IPAddress publicAddress, ILogger<S
         {
             try
             {
-                _sockets[port] = new UdpClient(new IPEndPoint(IPAddress.Any, port));
-                log.LogInformation("STUN: listening on UDP {Port}", port);
+                _sockets[port] = new UdpClient(new IPEndPoint(bindAddress ?? IPAddress.Any, port));
+                log.LogInformation("STUN: listening on {Bind} UDP {Port}, naming {Public} as the server",
+                    bindAddress?.ToString() ?? "all interfaces", port, publicAddress);
             }
             catch (SocketException ex)
             {
@@ -89,9 +91,10 @@ public sealed class StunListener(int[] ports, IPAddress publicAddress, ILogger<S
                 continue;
 
             var sender = changePort && _sockets.TryGetValue(otherPort, out var other) ? other : udp;
-            await sender.SendAsync(reply, received.RemoteEndPoint, ct);
-            log.LogInformation("STUN: answered {Remote} on UDP {Port} ({Style})",
-                received.RemoteEndPoint, port, IsRfc5389(data) ? "RFC 5389" : "RFC 3489");
+            var target = ReplyTarget(data, received.RemoteEndPoint);
+            await sender.SendAsync(reply, target, ct);
+            log.LogInformation("STUN: answered {Target} on UDP {Port} ({Style})",
+                target, port, IsRfc5389(data) ? "RFC 5389" : "RFC 3489");
         }
     }
 
@@ -160,18 +163,42 @@ public sealed class StunListener(int[] ports, IPAddress publicAddress, ILogger<S
 
     /// <summary>The value of the CHANGE-REQUEST attribute (0x0003), or 0 when the request has none.</summary>
     private static uint ChangeRequestFlags(byte[] request)
+        => FindAttribute(request, 0x0003) is { Length: >= 4 } value
+            ? BinaryPrimitives.ReadUInt32BigEndian(value)
+            : 0;
+
+    /// <summary>
+    /// Where the answer goes. A classic (RFC 3489) request may carry RESPONSE-ADDRESS (0x0002), the
+    /// endpoint it really listens on: the client's STUN socket and its P2P socket can differ, and a reply
+    /// to the datagram's source port is then never read (the request is retried forever). Only the port
+    /// is honoured, and only on the sender's own IP, so a spoofed request cannot aim the reply at a third host.
+    /// </summary>
+    internal static IPEndPoint ReplyTarget(byte[] request, IPEndPoint remote)
+    {
+        if (request.Length < 20 || IsRfc5389(request)
+            || FindAttribute(request, 0x0002) is not { Length: >= 8 } value || value[1] != 0x01)
+            return remote;
+
+        var port = BinaryPrimitives.ReadUInt16BigEndian(value.AsSpan(2));
+        var address = new IPAddress(value.AsSpan(4, 4));
+        return port != 0 && address.Equals(remote.Address) ? new IPEndPoint(remote.Address, port) : remote;
+    }
+
+    /// <summary>The value bytes of the first attribute of <paramref name="type"/>, or null.</summary>
+    private static byte[]? FindAttribute(byte[] request, ushort type)
     {
         var length = Math.Min(BinaryPrimitives.ReadUInt16BigEndian(request.AsSpan(2)), request.Length - 20);
         var i = 20;
         while (i + 4 <= 20 + length)
         {
-            var type = BinaryPrimitives.ReadUInt16BigEndian(request.AsSpan(i));
             var size = BinaryPrimitives.ReadUInt16BigEndian(request.AsSpan(i + 2));
-            if (type == 0x0003 && size >= 4 && i + 8 <= request.Length)
-                return BinaryPrimitives.ReadUInt32BigEndian(request.AsSpan(i + 4));
+            if (i + 4 + size > request.Length)
+                return null;
+            if (BinaryPrimitives.ReadUInt16BigEndian(request.AsSpan(i)) == type)
+                return request.AsSpan(i + 4, size).ToArray();
             i += 4 + size + ((4 - size % 4) % 4);
         }
 
-        return 0;
+        return null;
     }
 }

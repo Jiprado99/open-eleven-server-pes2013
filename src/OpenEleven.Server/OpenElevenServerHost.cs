@@ -122,9 +122,12 @@ public static class OpenElevenServerHost
         if (profile == GameProfile.Pes2013Pc)
             builder.Services.AddSingleton<IHostedService>(sp => new StunListener(
                 [3478, 3479],
-                System.Net.IPAddress.TryParse(sp.GetRequiredService<ServerCatalog>().ServerAddress, out var stunAddress)
-                    ? stunAddress : System.Net.IPAddress.Any,
-                sp.GetRequiredService<ILogger<StunListener>>()));
+                System.Net.IPAddress.TryParse(startupOptions.Stun.PublicAddress, out var stunPublic)
+                    ? stunPublic
+                    : System.Net.IPAddress.TryParse(sp.GetRequiredService<ServerCatalog>().ServerAddress, out var stunAddress)
+                        ? stunAddress : System.Net.IPAddress.Any,
+                sp.GetRequiredService<ILogger<StunListener>>(),
+                System.Net.IPAddress.TryParse(startupOptions.Stun.BindAddress, out var stunBind) ? stunBind : null));
 
         // Kestrel serves the small HTTP surface the client fetches before logging in: HTTPS, or
         // plain HTTP on 80 when Https.Enabled is false (local development). With HTTPS there is

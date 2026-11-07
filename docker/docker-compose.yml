@@ -125,6 +125,8 @@ services:
       - "28043:28043"   # menu
       - "28044:28044"   # account
       - "28045:28045"   # vdpchat
+      - "3478:3478/udp" # stun (the client's NAT discovery; without it P2P never gets an address)
+      - "3479:3479/udp" # stun, alternate port
     environment:
       OPENELEVEN_Server__AdvertiseIp: "${PES_DOMAIN:?set PES_DOMAIN}"
       OPENELEVEN_Server__Database__Provider: "MySql"

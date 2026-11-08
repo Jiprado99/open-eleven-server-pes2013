@@ -84,6 +84,19 @@ public sealed class MlMatchHandlers(MlLeague league)
             .Set("draw_num", team?.Draws ?? 0))];
     }
 
+    /// <summary>The club's place by team power, funds and rating (ERR_NOTFOUND without a club).</summary>
+    [Command("CMD_GET_ML_MYRANKING", Roles = MlTeamHandlers.Roles, Profiles = MlTeamHandlers.Profiles)]
+    public async ValueTask<KvMessage[]> MyRanking(CommandContext ctx)
+    {
+        var mine = await MlRankings.MyRankingAsync(league, ctx.Request.GetInt32("pid", ctx.Session.Pid), ctx.CancellationToken);
+        if (mine is null)
+            return [ctx.Fail("ERR_NOTFOUND")];
+        var reply = ctx.Ok();
+        foreach (var (key, value) in mine.Fields)
+            reply.Set(key, value);
+        return [reply];
+    }
+
     /// <summary>Ids from a scalar list (gameplayer_id_list=[1,2]) or a list of records.</summary>
     internal static List<int> Ids(object? value) => value switch
     {

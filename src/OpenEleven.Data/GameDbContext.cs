@@ -29,6 +29,11 @@ public sealed class GameDbContext(DbContextOptions<GameDbContext> options) : DbC
     public DbSet<CommunityLeagueCell> CommunityLeagueCells => Set<CommunityLeagueCell>();
     public DbSet<CommunityLeagueMatch> CommunityLeagueMatches => Set<CommunityLeagueMatch>();
     public DbSet<CompetitionEntry> CompetitionEntries => Set<CompetitionEntry>();
+    public DbSet<MlTeam> MlTeams => Set<MlTeam>();
+    public DbSet<MlTeamPlayer> MlTeamPlayers => Set<MlTeamPlayer>();
+    public DbSet<MlChecklistItem> MlChecklist => Set<MlChecklistItem>();
+    public DbSet<MlPricePoint> MlPrices => Set<MlPricePoint>();
+    public DbSet<MlEvent> MlEvents => Set<MlEvent>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -136,6 +141,31 @@ public sealed class GameDbContext(DbContextOptions<GameDbContext> options) : DbC
         {
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.Pid, x.CompeId }).IsUnique();
+        });
+
+        b.Entity<MlTeam>(e => e.HasKey(x => x.Pid));
+        b.Entity<MlTeamPlayer>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.Pid, x.GamePlayerId }).IsUnique();
+            e.HasIndex(x => x.GamePlayerId);
+        });
+        b.Entity<MlChecklistItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.Pid, x.GamePlayerId }).IsUnique();
+        });
+        b.Entity<MlPricePoint>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.GamePlayerId, x.Day }).IsUnique();
+            e.HasIndex(x => x.Day);
+        });
+        b.Entity<MlEvent>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.Pid, x.At });
+            e.HasIndex(x => x.At);
         });
 
         b.Entity<CommunityLeagueCell>(e =>

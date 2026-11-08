@@ -94,6 +94,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ProtocolTextPolicy>();
         services.AddSingleton<ChatTextPolicy>();
         services.AddSingleton<WebAssets>();
+        services.TryAddSingleton<MasterLeague.MlCatalog>();
+        services.AddScoped<MasterLeague.MlLeague>();
         services.AddScoped<GameIdAuthService>();
         services.AddScoped<RegistrationService>();
         services.AddHttpClient<CaptchaVerifier>(http => http.Timeout = TimeSpan.FromSeconds(10));

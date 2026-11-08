@@ -20,6 +20,7 @@ public sealed class MlLeague(GameDbContext db, MlCatalog catalog, IOptionsMonito
 {
     public GameDbContext Db => db;
     public MlCatalog Catalog => catalog;
+    public ServerOptions Options => options.CurrentValue;
     public MlRules Rules { get; } = new(options.CurrentValue.MasterLeague);
 
     public long Now => time.GetUtcNow().ToUnixTimeSeconds();

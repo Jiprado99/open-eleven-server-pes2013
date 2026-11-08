@@ -68,6 +68,9 @@ public sealed class MlTeam
     /// <summary>Rival Rank week the weekly bonus was last paid for (Unix seconds of the week start).</summary>
     public long RivalBonusWeek { get; set; }
 
+    /// <summary>The last ML competition whose prize was paid (CMD_GET_ML_COMPE_PRIZE pays once).</summary>
+    public int PrizeCompeId { get; set; }
+
     public long CreatedAt { get; set; }
     public long UpdatedAt { get; set; }
 }

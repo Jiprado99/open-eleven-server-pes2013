@@ -191,7 +191,7 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, MasterLeague.M
             new KvMessage().Set("type", owner.Type).Set("game_time", owner.GameTime).Set("frrate", owner.Frrate));
 
         // "To Next Match" pairs two entrants of one competition; its results belong to that competition.
-        if (owner.Type == "COMPE")
+        if (owner.Type is "COMPE" or "ML_COMPE")
         {
             var entered = new List<int>();
             foreach (var m in group.Members)

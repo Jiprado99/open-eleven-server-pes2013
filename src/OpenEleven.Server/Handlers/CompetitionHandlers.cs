@@ -92,9 +92,10 @@ public sealed class CompetitionHandlers(
 
         var teams = TitleProfiles.UseableTeams(options.CurrentValue.GameProfile, options.CurrentValue.Teams);
         var data = (await Summary(c, ctx.CancellationToken))
-            .Set("use_national", "TRUE")
-            .Set("use_club", "TRUE")
-            .Set("use_ml", "FALSE")
+            // A Master League competition is played with the entrant's ML club only.
+            .Set("use_national", c.MasterLeague ? "FALSE" : "TRUE")
+            .Set("use_club", c.MasterLeague ? "FALSE" : "TRUE")
+            .Set("use_ml", c.MasterLeague ? "TRUE" : "FALSE")
             .Set("useable_team_size", teams.Length)
             .Set("useable_team_id", new KvArray(teams.Cast<object?>().ToArray()))
             .Set("usable_ball_pre_num", 0)
@@ -144,6 +145,16 @@ public sealed class CompetitionHandlers(
         // ponytail: count-then-save race can overfill by a player or two; a DB constraint if it matters.
         if (await players.CountInCompetitionAsync(c.Id, ctx.CancellationToken) >= c.Capacity)
             return [ctx.Fail("ERR_COMPE_FULL")];
+        if (c.MasterLeague)
+        {
+            // An ML competition needs an ML club, within the team power limits.
+            var league = ctx.Resolve<MasterLeague.MlLeague>();
+            if (await league.TeamAsync(player.Pid, ctx.CancellationToken) is null)
+                return [ctx.Fail("ERR_NOTREGISTERED")];
+            var power = league.TeamPower(await league.SquadAsync(player.Pid, ctx.CancellationToken));
+            if ((c.MinTeamPower > 0 && power < c.MinTeamPower) || (c.MaxTeamPower > 0 && power > c.MaxTeamPower))
+                return [ctx.Fail("ERR_COMPE_JOIN_TEAMPOWER")];
+        }
 
         player.CompetitionId = c.Id;
         (player.CompetitionTeamId, player.CompetitionTeamName, player.CompetitionTeam) = (0, "", "");
@@ -430,7 +441,7 @@ public sealed class CompetitionHandlers(
 
     /// <summary>The keys the list and the detail page share.</summary>
     private async Task<KvMessage> Summary(CompetitionOptions c, CancellationToken ct)
-        => new KvMessage()
+        => MasterLeagueKeys(new KvMessage()
             .Set("compe_kind", c.Kind)
             .Set("compe_id", c.Id)
             .Set("entry_start_time", Unix(c.EntryStart))
@@ -452,7 +463,17 @@ public sealed class CompetitionHandlers(
             .Set("is_coach_mode", "NO")
             .Set("need_konamiid", "NO")
             // D5..D1 and NONE, enum 0x01: every division may enter.
-            .Set("entry_limit_division", KvArray.Repeat("TRUE", 6));
+            .Set("entry_limit_division", KvArray.Repeat("TRUE", 6)), c);
+
+    /// <summary>
+    /// PES 2013 keys of a Master League competition, from the exe's strings next to the competition
+    /// records (is_ml_compe, entry_limit_team_power_min/max). ponytail: not seen in a capture.
+    /// </summary>
+    private KvMessage MasterLeagueKeys(KvMessage entry, CompetitionOptions c)
+        => options.CurrentValue.GameProfile != GameProfile.Pes2013Pc ? entry
+            : entry.Set("is_ml_compe", c.MasterLeague ? "YES" : "NO")
+                .Set("entry_limit_team_power_min", c.MinTeamPower)
+                .Set("entry_limit_team_power_max", c.MaxTeamPower);
 
     /// <summary>Enum 0x0e, derived from the configured times.</summary>
     internal static string Status(CompetitionOptions c, DateTime now)

@@ -183,6 +183,19 @@ public sealed class CompetitionOptions
     public string DlcVersion { get; set; } = "";
 
     public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// PES 2013 Master League competition (is_ml_compe): entrants play with their ML club (quick
+    /// match ML_COMPE), need one to enter, cannot trade while it runs and win <see cref="Prizes"/>.
+    /// </summary>
+    public bool MasterLeague { get; set; }
+
+    /// <summary>Team power an ML club needs to enter (ERR_COMPE_JOIN_TEAMPOWER); 0 = no limit.</summary>
+    public int MinTeamPower { get; set; }
+    public int MaxTeamPower { get; set; }
+
+    /// <summary>Prize money by final place (1st, 2nd, ...), paid by CMD_GET_ML_COMPE_PRIZE.</summary>
+    public long[] Prizes { get; set; } = [];
 }
 
 /// <summary>

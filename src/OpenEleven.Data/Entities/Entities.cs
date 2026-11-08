@@ -122,6 +122,19 @@ public sealed class Player
     public string GamePlan { get; set; } = "";
 
     /// <summary>
+    /// PES 2013 keeps one game plan per mode (CMD_GET/SET_GAMEPLAN mode=ML|ML_COMPE|COMPE); these
+    /// hold the Master League, Master League competition and competition plans. Empty = none saved.
+    /// </summary>
+    [MaxLength(4096)]
+    public string GamePlanMl { get; set; } = "";
+
+    [MaxLength(4096)]
+    public string GamePlanMlCompe { get; set; } = "";
+
+    [MaxLength(4096)]
+    public string GamePlanCompe { get; set; } = "";
+
+    /// <summary>
     /// Competition the player entered with CMD_JOIN_COMPLG, 0 for none. One at a time: the
     /// client knows ERR_COMPE_JOIN_OTHERCOMPE for a second entry.
     /// </summary>

@@ -473,9 +473,23 @@ public sealed class AccountHandlers(
         if (player is null)
             return [ctx.Fail("ERR_DATANOTFOUND")];
 
-        var plan = player.GamePlan.Length > 0 ? player.GamePlan : DefaultGamePlan.Hex;
+        // A mode with nothing saved yet starts from the player's normal plan.
+        var saved = PlanOf(player, ctx.Request.GetString("mode"));
+        var plan = saved.Length > 0 ? saved : player.GamePlan.Length > 0 ? player.GamePlan : DefaultGamePlan.Hex;
         return [ctx.Ok().Set("gameplan_data_size", plan.Length / 2).Set("gameplan_data", plan)];
     }
+
+    /// <summary>
+    /// The plan stored for a mode. pes2013.exe sends mode=ML, ML_COMPE or COMPE with the Master League
+    /// and competition plans (FUN_005d2740 / FUN_005d27c0); no mode is the normal plan.
+    /// </summary>
+    private static string PlanOf(Player player, string? mode) => mode switch
+    {
+        "ML" => player.GamePlanMl,
+        "ML_COMPE" => player.GamePlanMlCompe,
+        "COMPE" => player.GamePlanCompe,
+        _ => player.GamePlan,
+    };
 
     /// <summary>Saves the game plan block as the client sent it (a hex string of gameplan_data_size bytes).</summary>
     [Command("CMD_SET_GAMEPLAN", Roles = ServiceRole.Menu, Profiles = GameProfiles.Modern)]
@@ -487,7 +501,14 @@ public sealed class AccountHandlers(
             || await players.GetAsync(ctx.Session.Pid, ctx.CancellationToken) is not { } player)
             return [ctx.Fail("ERR_DATABASE")];
 
-        player.GamePlan = data;
+        switch (ctx.Request.GetString("mode"))
+        {
+            case "ML": player.GamePlanMl = data; break;
+            case "ML_COMPE": player.GamePlanMlCompe = data; break;
+            case "COMPE": player.GamePlanCompe = data; break;
+            default: player.GamePlan = data; break;
+        }
+
         await players.SaveAsync(ctx.CancellationToken);
         return [ctx.Ok()];
     }

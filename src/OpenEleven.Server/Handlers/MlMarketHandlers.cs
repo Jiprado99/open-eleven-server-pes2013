@@ -144,9 +144,9 @@ public sealed class MlMarketHandlers(MlLeague league)
         var team = await league.TeamAsync(ctx.Session.Pid, ctx.CancellationToken);
         var player = team is null ? null
             : await league.Db.MlTeamPlayers.FirstOrDefaultAsync(p => p.Pid == team.Pid && p.GamePlayerId == id, ctx.CancellationToken);
-        if (team is null || player is null || type < 0 || type >= league.Rules.Options.ExtendMatches.Length)
+        if (team is null || player is null || type < 0 || type >= league.Rules.Options.ExtendMatchesOrDefault().Length)
             return [ctx.Fail("ERR_NOTFOUND")];
-        var matches = league.Rules.Options.ExtendMatches[type];
+        var matches = league.Rules.Options.ExtendMatchesOrDefault()[type];
         if (player.ContractTerm + matches > MaxContractTerm)
             return [ctx.Fail("ERR_OVEREXTEND")];
 

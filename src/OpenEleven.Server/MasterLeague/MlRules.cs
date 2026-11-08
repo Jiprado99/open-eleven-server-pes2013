@@ -39,7 +39,7 @@ public sealed class MlRules(MasterLeagueOptions o)
     public long[] ContractPrices(long marketPrice)
     {
         var salary = Salary(marketPrice);
-        return o.ExtendMatches.Select((matches, i) =>
+        return o.ExtendMatchesOrDefault().Select((matches, i) =>
             RoundThousands(salary * matches * (100 - 5 * i) / 100.0)).ToArray();
     }
 
@@ -63,8 +63,8 @@ public sealed class MlRules(MasterLeagueOptions o)
     public int DivisionFor(int points)
     {
         var division = 0;
-        for (var i = 0; i < o.DivisionPoints.Length && i < 4; i++)
-            if (points >= o.DivisionPoints[i])
+        for (var i = 0; i < o.DivisionPointsOrDefault().Length && i < 4; i++)
+            if (points >= o.DivisionPointsOrDefault()[i])
                 division = i + 1;
         return division;
     }

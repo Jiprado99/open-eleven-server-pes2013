@@ -103,7 +103,7 @@ public static class MlRivalRank
 
         // The key table has no separate count for rank_list: rival_player_num is it.
         return MlHttp.Ok()
-            .Set("price_list", new KvArray(league.Rules.Options.RivalRankBonus.Select(b => (object?)b).ToArray()))
+            .Set("price_list", new KvArray(league.Rules.Options.RivalRankBonusOrDefault().Select(b => (object?)b).ToArray()))
             .Set("limit_time", weekStart + Week)
             .SetList("rival_player_num", "rank_list", list);
     }
@@ -118,7 +118,7 @@ public static class MlRivalRank
             return MlHttp.Fail("ERR_NO_WIN_POINT");
 
         var place = (await TableAsync(league, team.Division, lastWeek, ct)).FindIndex(l => l.Pid == pid);
-        var bonuses = league.Rules.Options.RivalRankBonus;
+        var bonuses = league.Rules.Options.RivalRankBonusOrDefault();
         if (place < 0 || place >= bonuses.Length)
             return MlHttp.Fail("ERR_NO_WIN_POINT");
 

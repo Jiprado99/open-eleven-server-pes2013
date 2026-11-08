@@ -534,15 +534,18 @@ public sealed class MasterLeagueOptions
     /// <summary>Share of the market price a sale returns, in percent.</summary>
     public int SellPercent { get; set; } = 80;
 
-    /// <summary>Contract length (matches) of a new signing and of each extension (CONTRACT_TYPE1..3).</summary>
+    /// <summary>
+    /// Contract length (matches) of a new signing and of each extension (CONTRACT_TYPE1..3).
+    /// The arrays here default to empty and MlRules fills in the defaults: the configuration binder
+    /// appends configured items to an array's initial values instead of replacing them.
+    /// </summary>
     public int NewContractMatches { get; set; } = 10;
-    public int[] ExtendMatches { get; set; } = [10, 20, 30];
+    public int[] ExtendMatches { get; set; } = [];
 
     /// <summary>Salary per match, in thousandths of the market price; extensions cost salary × matches (less 5% / 10% for the longer types).</summary>
     public int SalaryPerMille { get; set; } = 5;
 
-    /// <summary>Match income by result, the cost of each card, and the share of the opponent's
-    /// squad value paid as a win bonus (per mille).</summary>
+    /// <summary>Match income by result and the cost of each card.</summary>
     public long WinIncome { get; set; } = 300_000;
     public long DrawIncome { get; set; } = 180_000;
     public long LossIncome { get; set; } = 100_000;
@@ -552,9 +555,13 @@ public sealed class MasterLeagueOptions
     /// <summary>Extra income when both clubs use the same base team (derby_income).</summary>
     public long DerbyIncome { get; set; } = 50_000;
 
-    /// <summary>Division points needed for ML_DIVISION_4..ML_DIVISION_1.</summary>
-    public int[] DivisionPoints { get; set; } = [30, 90, 180, 300];
+    /// <summary>Division points needed for ML_DIVISION_4..ML_DIVISION_1 (default 30, 90, 180, 300).</summary>
+    public int[] DivisionPoints { get; set; } = [];
 
-    /// <summary>Weekly Rival Rank bonus for the top three of a division (income).</summary>
-    public long[] RivalRankBonus { get; set; } = [1_000_000, 600_000, 300_000];
+    /// <summary>Weekly Rival Rank bonus for the top three of a division (default 1M, 600k, 300k).</summary>
+    public long[] RivalRankBonus { get; set; } = [];
+
+    public int[] ExtendMatchesOrDefault() => ExtendMatches.Length > 0 ? ExtendMatches : [10, 20, 30];
+    public int[] DivisionPointsOrDefault() => DivisionPoints.Length > 0 ? DivisionPoints : [30, 90, 180, 300];
+    public long[] RivalRankBonusOrDefault() => RivalRankBonus.Length > 0 ? RivalRankBonus : [1_000_000, 600_000, 300_000];
 }

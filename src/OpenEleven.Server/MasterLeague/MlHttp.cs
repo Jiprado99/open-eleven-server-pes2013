@@ -29,7 +29,7 @@ public static class MlHttp
 {
     public static readonly string[] UrlTypes =
     [
-        "ML_RANKING", "ML_RANKING_BYID", "ML_DIVISIONRANKING", "ML_DIVISIONRANKING_BYID",
+        "ML_RANKING", "ML_RANKING_BYID", "ML_DIVISIONRANKING", "ML_DIVISIONRANKING_BYID", "ML_RIVAL_RANK",
         "ML_PRICERANKING", "ML_GAINRANKING", "ML_POPULARRANKING", "ML_GAMEPLAYERHISTORY", "ML_MARKET_PLAYER_PARAM_SIZE",
     ];
 
@@ -64,6 +64,13 @@ public static class MlHttp
             "ML_RANKING_BYID" => await MlRankings.RankingAsync(league, q.GetValueOrDefault("rankall_kind"), 0, null, pid, ct),
             "ML_DIVISIONRANKING" => await MlRankings.DivisionRankingAsync(league, Arg("division", -1), Arg("start_index"), null, ct),
             "ML_DIVISIONRANKING_BYID" => await MlRankings.DivisionRankingAsync(league, -1, 0, pid, ct),
+            "ML_RIVAL_RANK" => msg switch
+            {
+                "CMD_GET_ML_RIVAL_RANK_STATUS" => await MlRivalRank.StatusAsync(league, pid, ct),
+                "CMD_GET_ML_RIVAL_RANK_BONUS" => await MlRivalRank.BonusAsync(league, pid, ct),
+                "CMD_GET_ML_RIVAL_RANK_LAST" => await MlRivalRank.RankAsync(league, pid, lastWeek: true, ct),
+                _ => await MlRivalRank.RankAsync(league, pid, lastWeek: false, ct),
+            },
             _ => Fail("ERR_NOTFOUND"),
         };
 

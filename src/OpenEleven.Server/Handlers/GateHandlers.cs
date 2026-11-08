@@ -177,6 +177,11 @@ public sealed class GateHandlers(
             entries.Add(UrlEntry("AVATAR", $"{host}/avatar", 0));
             entries.Add(UrlEntry("NICKNAME", $"{host}/nickname", 0));
 
+            // Master League Online: rankings, market and Rival Rank go over HTTP (MlHttp).
+            if (ctx.Profile == GameProfile.Pes2013Pc)
+                foreach (var type in MasterLeague.MlHttp.UrlTypes)
+                    entries.Add(UrlEntry(type, host + MasterLeague.MlHttp.PathOf(type), 0));
+
             foreach (var url in options.CurrentValue.Urls)
             {
                 entries.RemoveAll(e => e.GetString("type") == url.Type);

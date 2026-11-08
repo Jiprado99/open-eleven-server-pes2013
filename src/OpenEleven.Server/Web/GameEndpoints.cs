@@ -188,6 +188,26 @@ public static class GameEndpoints
                 "text/plain", Encoding.UTF8);
         }).RequireRateLimiting(HttpRateLimits.Ranking);
 
+        // The Master League Online urls (/ml/<type>, see MasterLeague.MlHttp): the request is the
+        // command's key=value text, the body of the answer the reply.
+        app.MapMethods("/ml/{type}", ["GET", "POST"], async (string type, HttpContext http, MasterLeague.MlLeague league) =>
+        {
+            var query = http.Request.QueryString.Value ?? "";
+            if (HttpMethods.IsPost(http.Request.Method))
+            {
+                if (http.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+                    limit.MaxRequestBodySize = 4096;
+                using var reader = new StreamReader(http.Request.Body, Encoding.UTF8);
+                var buffer = new char[4096];
+                var body = new string(buffer, 0, await reader.ReadBlockAsync(buffer, http.RequestAborted));
+                if (body.Length > 0)
+                    query = body;
+            }
+
+            return Results.Text(await MasterLeague.MlHttp.RenderAsync(league, type, query, 0, http.RequestAborted),
+                "text/plain", Encoding.UTF8);
+        }).RequireRateLimiting(HttpRateLimits.Ranking);
+
         // The NICKNAME url: the texts of the nickname catalogue (CMD_GET_NICKNAME_COMPE).
         app.MapMethods("/nickname", ["GET", "POST"], () =>
             Results.Text(Handlers.NicknameHandlers.RenderCatalogue(), "text/plain", Encoding.UTF8))

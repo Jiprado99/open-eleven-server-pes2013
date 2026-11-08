@@ -94,7 +94,7 @@ URLs que el servidor anuncia hoy para PES 2013 (`GateHandlers.GetUrlList`) y su 
 | COMMU_MEMBERS_VS, COMMU_TEAM_VS | `/commu_members_vs?`, `/commu_team_vs?` | Cara a cara de una comunidad (terminan en `?`) |
 | AVATAR | `/avatar` | Foto de otro jugador (`CMD_GET_AVATAR_HTTP`) |
 | NICKNAME | `/nickname` | Catálogo de nicknames (`CMD_GET_NICKNAME_COMPE`) |
-| `ML_RANKING`, `ML_RANKING_BYID`, `ML_DIVISIONRANKING`(`_BYID`), `ML_RIVAL_RANK`, `ML_PRICERANKING`, `ML_GAINRANKING`, `ML_POPULARRANKING`, `ML_GAMEPLAYERHISTORY`, `ML_MARKET_PLAYER_PARAM_SIZE` | `/ml/<tipo en minúsculas>` | Master League Online (`MasterLeague/MlHttp.cs`) |
+| `ML_RANKING`, `ML_RANKING_BYID`, `ML_DIVISIONRANKING`(`_BYID`), `ML_RIVAL_RANK`, `ML_PRICERANKING`, `ML_GAINRANKING`, `ML_POPULARRANKING`, `ML_GAMEPLAYERHISTORY`, `ML_MARKET_PLAYER_PARAM`(`_SIZE`) | `/ml/<tipo en minúsculas>` | Master League Online (`MasterLeague/MlHttp.cs`) |
 | DOWNLOAD y otros | configurables en `Server:Urls` | Manifiesto de DLC, archivos |
 
 El cliente conoce más tipos que no anunciamos (`COMMU_STATS`, `WIDGET`, `TOPMENU`, `RSS`). Para

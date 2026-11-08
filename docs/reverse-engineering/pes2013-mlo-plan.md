@@ -56,6 +56,7 @@ Tabla `comando → urltype` del exe (0x0141f07c). Hay que anunciarlos en `GetUrl
 | `ML_PRICERANKING`, `ML_GAINRANKING`, `ML_POPULARRANKING` | `CMD_GET_ML_MARKET_PRICERANKING`, `_GAINRANKING`, `_POPULARRANKING` |
 | `ML_GAMEPLAYERHISTORY` | `CMD_GET_ML_MARKET_GAMEPLAYERHISTORY` |
 | `ML_MARKET_PLAYER_PARAM_SIZE` | `CMD_GET_ML_PLAYERPARAMSIZE` (`file_size`, `uncompressed_file_size`) |
+| `ML_MARKET_PLAYER_PARAM` (tipo 0x1f) | el archivo: una línea de texto por futbolista, base de la búsqueda del mercado |
 | `TOPMENU` | `CMD_GET_TOPMENU_INFO` (incluye `ml_popular_rank_list`, `mlo_compe_notice`, `mlo_last_compe`) |
 
 ### 1.4 Claves de los registros (tablas de claves del exe)
@@ -168,9 +169,16 @@ Cada fase termina con tests en `tests/OpenEleven.Server.Tests`, actualización d
    cliente los pide después con `GET_ML_MATCHINCOME_INFO` / `GET_ML_MATCHEXPENSE`. El plantel del rival
    viaja por P2P (`is_team_data_load` en `roomplayer_list`) **(sin confirmar)**.
 5. **`ML_MARKET_PLAYER_PARAM`.** `CMD_GET_ML_PLAYERPARAMSIZE` (`FUN_0065f740`) devuelve `file_size` y
-   `uncompressed_file_size`. Con `file_size=0` el cliente **se salta la descarga** y sigue
-   (`FUN_0065f520`). Es un archivo opcional de parámetros de mercado: se responde con 0 y 0, sin
-   archivo.
+   `uncompressed_file_size`. Con `file_size=0` el cliente se salta la descarga (`FUN_0065f520`),
+   pero **el archivo no es opcional**: la búsqueda del mercado recorre sus líneas
+   (`FUN_0065fa20`, `FUN_00662ab0`), así que sin él el mercado sale vacío (lo vimos en la primera
+   prueba real). El archivo se baja de la URL tipo 0x1f (`ML_MARKET_PLAYER_PARAM`). Es texto, una
+   línea por futbolista con 7 valores separados por espacios: `gameplayer_id market_price
+   fin_bloqueo condición is_trade_stop owner_num contract_price`. Se ignora la línea con id 0 o
+   con el último valor en -1; `is_trade_stop≠0` lo oculta. Si los dos tamaños coinciden, va sin
+   comprimir (si no, se descomprime con `FUN_01302ac0`). El significado de los valores 3 a 5 sale
+   de a qué campos los copia el cliente, no de una captura; el servidor manda condición 240
+   (`NORMAL`) y ningún bloqueo.
 
 ### Fase 1 — Modo y equipo propio
 

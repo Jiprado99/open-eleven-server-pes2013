@@ -235,3 +235,39 @@ Cada fase termina con tests en `tests/OpenEleven.Server.Tests`, actualización d
    propone dejarlos configurables y ajustar con partidos reales.
 3. **Alcance de la primera entrega**: fases 0-2 hacen jugable el menú (equipo + mercado); los partidos
    (fase 3) son lo que más riesgo tiene.
+
+## 5. Estado (2026-11-08) y puntos grises
+
+Fases 0 a 6 implementadas, con tests (`tests/OpenEleven.Server.Tests/MasterLeague*Tests.cs`). Nada
+se probó todavía con un cliente real ni se desplegó. El overall sale de la media de los diez mejores
+atributos (Messi 95, Xavi 91). La economía es configurable en `Server:MasterLeague`.
+
+Lo que queda por definir o confirmar:
+
+1. **Partida rápida `_NTL` sin probar.** El flujo se portó del de 2011 con las claves del exe. Falta
+   confirmar que el cliente manda `CMD_SEND_IPANDPORT_NTL` antes de buscar desde el menú; sin eso, el
+   aviso sale con direcciones vacías.
+2. **Formato HTTP de MLO.** No está confirmado cómo arma el cliente la petición ni si espera el cuerpo
+   tal cual (como `/nickname`) o envuelto. Hay que mirar el primer pedido real en el log HTTP.
+3. **Reglas económicas inventadas.** Precios (×1,25 por punto de overall, +2 % por dueño), salarios
+   (0,5 % por partido), ingresos por resultado, contratos de 10/20/30 partidos, tope de 60, plantel de
+   18 a 32 y 5 compras por semana.
+4. **Overall aproximado.** No se aplica la ponderación por posición del juego, y no se decodificaron
+   posición, edad ni nacionalidad.
+5. **Valores de enumerados desconocidos.** `ml_skill_level` (se usa el enum de lobby según la
+   división), `team_resource` (se manda el valor del plantel), `ml_team_type` y la clave de
+   `CMD_SET_ML_MYTEAM_TYPE`, `compe_result` (se manda el puesto) y las partes y síntomas de las
+   lesiones (siempre 1).
+6. **Reglas de partido simplificadas.** Las lesiones duran 2 partidos fijos; la roja solo se cuenta,
+   sin suspensión. Un contrato vencido se va solo si el plantel no queda por debajo del mínimo. Los
+   fondos pueden quedar negativos.
+7. **Rival Rank.** Las reglas son propias: grupo = división actual, semana lunes-domingo UTC, `BEGINNER`
+   con menos de 5 partidos y `PENALTY` nunca se usa. Se desconoce la clave de la petición de
+   `ML_DIVISIONRANKING`; se lee `division`.
+8. **Sin implementar** (el cliente no los envía o no se sabe qué esperan): `TOPMENU` (no anunciado),
+   `CMD_REQWATCH_ML_MARKET_PRICE` (solo se acepta, no se empuja nada), `GET_ML_REGULAREVENTLIST` (vacío),
+   `GET_ML_DIVISIONUPDATE` (sigue `is_update=NO`), y los comandos que solo aparecen en la tabla de
+   errores (`SEARCH_ML*`, `GET_ML_MARKET_ENV`, `GET_ML_TRADEHISTORY`, `GET_ML_DIVISION`,
+   `GET_ML_GAMERESULTS`, `DECIDE_ML_MYTEAM_PLAYER`, `GET_ML_TEAM_TYPE_REVISION`, `GET_ML_MYTEAM_HISTORY`,
+   `GET_ML_COMPE_GAMEPLAYERLIST`).
+9. **Página web.** No se agregó un ranking MLO al sitio.

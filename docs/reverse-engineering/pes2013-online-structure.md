@@ -94,13 +94,14 @@ URLs que el servidor anuncia hoy para PES 2013 (`GateHandlers.GetUrlList`) y su 
 | COMMU_MEMBERS_VS, COMMU_TEAM_VS | `/commu_members_vs?`, `/commu_team_vs?` | Cara a cara de una comunidad (terminan en `?`) |
 | AVATAR | `/avatar` | Foto de otro jugador (`CMD_GET_AVATAR_HTTP`) |
 | NICKNAME | `/nickname` | Catálogo de nicknames (`CMD_GET_NICKNAME_COMPE`) |
+| `ML_RANKING`, `ML_RANKING_BYID`, `ML_DIVISIONRANKING`(`_BYID`), `ML_RIVAL_RANK`, `ML_PRICERANKING`, `ML_GAINRANKING`, `ML_POPULARRANKING`, `ML_GAMEPLAYERHISTORY`, `ML_MARKET_PLAYER_PARAM_SIZE` | `/ml/<tipo en minúsculas>` | Master League Online (`MasterLeague/MlHttp.cs`) |
 | DOWNLOAD y otros | configurables en `Server:Urls` | Manifiesto de DLC, archivos |
 
-El cliente conoce más tipos que no anunciamos (por ejemplo `COMMU_STATS`, `ML_RANKING`,
-`ML_RANKING_BYID`, `ML_DIVISIONRANKING`, `ML_GAINRANKING`, `ML_POPULARRANKING`, `ML_PRICERANKING`,
-`ML_RIVAL_RANK`, `ML_GAMEPLAYERHISTORY`, `ML_MARKET_PLAYER_PARAM_SIZE`, `WIDGET`, `TOPMENU`, `RSS`).
-Son el modo Master League online. Para cada uno que se quiera soportar: buscar su `urltype="..."` en
-`string_xrefs.txt`, ver el comando asociado en `all_functions.c`, anunciar el tipo y agregar la ruta.
+El cliente conoce más tipos que no anunciamos (`COMMU_STATS`, `WIDGET`, `TOPMENU`, `RSS`). Para
+soportar uno: buscar su `urltype="..."` en el volcado (tabla `comando → urltype` en 0x0141f07c), ver el
+comando asociado en `all_functions.c`, anunciar el tipo y agregar la ruta. En PES 2013 `ulist` no
+tiene el límite de 23 entradas de PES 2010/2011: `FUN_0054fdc0` recorre todas y las guarda por índice
+de tipo.
 
 ### 2.3 UDP, STUN y P2P
 
@@ -151,6 +152,7 @@ Con `EnforceSessionState: true` un comando fuera de estado se rechaza.
 | `PlayerDirectoryHandlers` | Búsqueda de jugadores |
 | `AvatarHandlers` | Fotos (`CMD_SET_AVATAR`; lectura por HTTP) |
 | `NicknameHandlers` | Nicknames (`CMD_SET_NICKNAME`, `CMD_GET_UNLOCKEDNICKNAMELIST`, catálogo HTTP) |
+| `MlTeamHandlers`, `MlMarketHandlers`, `MlMatchHandlers`, `MlNewsHandlers` | Master League Online: club, mercado, partidos, noticias (lógica en `MasterLeague/`) |
 | `PlayerPresenter` + `State/ListWatchEntries` | Arman los registros de jugador que viajan en las listas |
 
 Los comandos se registran con `[Command("CMD_X", Roles = ..., Profiles = ..., RequiredState = ...)]`;
@@ -201,6 +203,26 @@ registro al que le falta una clave se descarta entero. Claves de PES 2013, verif
   de relleno y están todos desbloqueados (no hay sistema de logros). Pendiente: desbloqueo por logros y
   verificar el formato de la respuesta.
 
+### Partida rápida (`_NTL`)
+
+- PES 2013 usa el mismo diálogo de partida rápida que PES 2011, con `_NTL` al final de cada mensaje:
+  `MSG_QUICK_REQ_MATCHING_START_NTL`, `..._MATCH_MEMBER_NOTICE_NTL`, `..._MEMBER_REPLY_NTL`,
+  `..._MATCHING_RES_NTL`, `..._ACCEPT_MATCH_OFFER(_RES)_NTL`, `CMD_CANCEL_STARTQUICKMATCH_NTL`.
+  `CMD_START_QUICKMATCH_NTL` es interno del cliente y no llega al servidor.
+- `type` puede ser `OC_RANK`, `OC_FREE`, `COMPE`, `ML_RANK` o `ML_COMPE`. El aviso de miembros
+  (`FUN_010e75d0`) exige además los datos del club ML y `derby_income`.
+- **(sin confirmar)**: hasta el 2026-11-08 nadie había usado la partida rápida en este servidor.
+
+### Master League Online
+
+- Plan, claves y reglas: `pes2013-mlo-plan.md`. Código en `MasterLeague/` (`MlLeague`, `MlRules`,
+  `MlCatalog`, `GameDataReader`, `MlMatchSettlement`, `MlRankings`, `MlRivalRank`, `MlCompetitions`, `MlHttp`).
+- El catálogo de jugadores se lee de la instalación del juego (`Server:MasterLeague:GameDirectory`) y
+  queda en caché en `data/ml-catalog.json`. Los datos son de Konami: no se suben al repo.
+- Un partido MLO es una partida rápida `ML_RANK`/`ML_COMPE`. El cierre del club lo hace
+  `MatchResults` → `MlMatchSettlement`.
+- Game plan por modo: `CMD_GET/SET_GAMEPLAN` con `mode=ML|ML_COMPE|COMPE` usan columnas propias.
+
 ## 6. Cómo investigar un caso nuevo
 
 1. Reproducir y mirar `C:\Servers\PES2013\logs\server.log` (con `Debug.HexDump`/`LogUnknownCommands`
@@ -230,7 +252,8 @@ registro al que le falta una clave se descarta entero. Claves de PES 2013, verif
 ## 8. Pendientes conocidos
 
 - Confirmar con un cliente real el formato de `/avatar` y `/nickname`.
-- Master League online: tipos `ML_*` y sus comandos, sin implementar.
+- Master League Online: implementado sin probar con un cliente real. Los puntos abiertos están en
+  `pes2013-mlo-plan.md`, sección 5.
 - Desbloqueo de nicknames por logros y catálogo real.
 - `TOPMENU`, `WIDGET`, `RSS`, `COMMU_STATS`: tipos conocidos del cliente no anunciados.
 - STUN/watchdog de PES 6 detenido (ver memoria del usuario); no relacionado con PES 2013.

@@ -25,8 +25,15 @@ namespace OpenEleven.Server.Handlers;
 /// room tail (CMD_SET_GAMEMEMBERENV, CMD_SET_GAMEMEMBER, in-match commands) is the lobby one.</item>
 /// </list>
 /// Quick match starts from the menu, before any lobby or block, hence RequiredState PlayerSelected.
+/// <para>
+/// pes2013.exe speaks the same dialogue with an _NTL suffix on every message (its NTL library,
+/// FUN_010e4db0..FUN_010e8270): the request carries type, player_num, game_time, is_rating,
+/// has_guestplayer, pass_level, is_pass_level, is_coach_mode and is_team_power; type is one of
+/// OC_RANK, OC_FREE, COMPE, ML_RANK, ML_COMPE (Master League Online plays ML_RANK); the member
+/// notice adds derby_income and the ML club of each member (FUN_010e75d0).
+/// </para>
 /// </summary>
-public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickMatchHandlers> log)
+public sealed class QuickMatchHandlers(IPlayerRepository players, MasterLeague.MlLeague league, ILogger<QuickMatchHandlers> log)
 {
     private const ServiceRole Roles = ServiceRole.Menu;
 
@@ -95,29 +102,39 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
     /// </summary>
     [Command("MSG_QUICK_REQ_MATCHING_START", Roles = Roles,
         RequiredState = SessionState.PlayerSelected)]
+    [Command("MSG_QUICK_REQ_MATCHING_START_NTL", Roles = Roles, Profiles = GameProfile.Pes2013Pc,
+        RequiredState = SessionState.PlayerSelected)]
     public async ValueTask<KvMessage[]> RequestMatchingStart(CommandContext ctx)
     {
-        var r = ctx.Request;
-        var type = r.GetString("type") ?? "OC_Rank";
+        var ntl = ctx.Msg.EndsWith("_NTL", StringComparison.Ordinal);
+        // The NTL request is flat; accept the setting as a record too (qmatchsetting).
+        var r = ctx.Request.GetValue("qmatchsetting") as KvMessage ?? ctx.Request;
+        var type = r.GetString("type") ?? (ntl ? "OC_RANK" : "OC_Rank");
         var playerNum = Math.Clamp(r.GetInt32("player_num", 2), 2, 4);
         var gameTime = r.GetString("game_time") ?? "GT10";
         var frrate = r.GetString("frrate") ?? "FRAME_60";
+
+        // A Master League match needs a club on both sides.
+        if (type is "ML_RANK" or "ML_COMPE" && await league.TeamAsync(ctx.Session.Pid, ctx.CancellationToken) is null)
+            return [ctx.Fail("ERR_QMATCH_STARTMATCHING")];
 
         // The saved options: opp_lang, then the rating filters for Rank and Free.
         var player = await players.GetAsync(ctx.Session.Pid, ctx.CancellationToken);
         var saved = (player?.QuickMatchOptions ?? "").Split(',');
         string Saved(int i) => saved.Length == KeysFor(ctx.Profile).Length && i < saved.Length ? saved[i] : "";
         var seeker = new QuickSeeker(ctx.Session, ctx.Rqid, type, playerNum, gameTime, frrate,
-            $"{type}|{playerNum}|{gameTime}|{frrate}")
+            $"{type}|{playerNum}|{gameTime}|{frrate}{(ntl ? "|NTL" : "")}")
         {
             Lang = player?.Lang ?? "",
-            OppLang = r.GetString("opp_lang") ?? (Saved(0) is { Length: > 0 } lang ? lang : "ANY"),
+            // PES 2013 has no opponent language option; its is_rating flag asks for a similar rating.
+            OppLang = ntl ? "ANY" : r.GetString("opp_lang") ?? (Saved(0) is { Length: > 0 } lang ? lang : "ANY"),
             Rating = player?.Rating ?? 0,
-            RatingFilter = Saved(type == "OC_Free" ? 2 : 1) == "YES",
+            RatingFilter = ntl ? r.GetString("is_rating") == "YES" : Saved(type == "OC_Free" ? 2 : 1) == "YES",
+            Ntl = ntl,
         };
 
         ctx.Session.Push(ctx.Ok());
-        ctx.Session.Push(MatchingStartResponse(ctx.Rqid));
+        ctx.Session.Push(MatchingStartResponse(seeker.Name("MSG_QUICK_MATCHING_START_RES"), ctx.Rqid));
         log.LogInformation("pid {Pid} searching for a quick match ({Key})", ctx.Session.Pid, seeker.Key);
 
         if (ctx.Hub.QuickMatch.Search(seeker) is { } group)
@@ -128,12 +145,14 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
     /// <summary>A client finished pinging the others; once all have, the match is offered.</summary>
     [Command("MSG_QUICK_MATCH_MEMBER_REPLY", Roles = Roles,
         RequiredState = SessionState.PlayerSelected)]
+    [Command("MSG_QUICK_MATCH_MEMBER_REPLY_NTL", Roles = Roles, Profiles = GameProfile.Pes2013Pc,
+        RequiredState = SessionState.PlayerSelected)]
     public ValueTask<KvMessage[]> MemberReply(CommandContext ctx)
     {
         ctx.Session.Push(ctx.Ok());
         if (ctx.Hub.QuickMatch.GroupOf(ctx.Session) is { } group && group.Replied(ctx.Session.Pid))
             foreach (var m in group.Members)
-                m.Session.Push(KvMessage.Ok("MSG_QUICK_MATCHING_RES", m.Rqid));
+                m.Session.Push(KvMessage.Ok(m.Name("MSG_QUICK_MATCHING_RES"), m.Rqid));
         return Reply.None();
     }
 
@@ -143,6 +162,8 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
     /// members (<c>member[i].pid|matching_order|frrate</c>; pids must be the notice's).
     /// </summary>
     [Command("MSG_QUICK_ACCEPT_MATCH_OFFER", Roles = Roles,
+        RequiredState = SessionState.PlayerSelected)]
+    [Command("MSG_QUICK_ACCEPT_MATCH_OFFER_NTL", Roles = Roles, Profiles = GameProfile.Pes2013Pc,
         RequiredState = SessionState.PlayerSelected)]
     public async ValueTask<KvMessage[]> AcceptMatchOffer(CommandContext ctx)
     {
@@ -166,7 +187,7 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
         var owner = group.Members[0];
         var room = ctx.Hub.CreateQuickMatchRoom(
             group.Members.Select(m => m.Session).ToArray(),
-            owner.Type == "OC_Rank" ? "OC_RANKING" : "OC_FREE",
+            RoomMatchType(owner.Type),
             new KvMessage().Set("type", owner.Type).Set("game_time", owner.GameTime).Set("frrate", owner.Frrate));
 
         // "To Next Match" pairs two entrants of one competition; its results belong to that competition.
@@ -184,17 +205,29 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
             .Set("matching_order", i)
             .Set("frrate", m.Frrate)).ToArray();
         foreach (var m in group.Members)
-            m.Session.Push(KvMessage.Ok("MSG_QUICK_ACCEPT_MATCH_OFFER_RES", m.Rqid).Set("member", list));
+            m.Session.Push(KvMessage.Ok(m.Name("MSG_QUICK_ACCEPT_MATCH_OFFER_RES"), m.Rqid).Set("member", list));
         ctx.Hub.PublishQuickMatchRoom(room);
         return [];
     }
 
     /// <summary>
-    /// The client rejects this event as ERR_CLIENT_SVRFORMAT unless all six tuning fields
-    /// are present, so they are always written together.
+    /// The room's match type: ranked (rating and points move), free, or a Master League match
+    /// (settled by MasterLeague.MlMatchSettlement). PES 2011 sends OC_Rank, PES 2013 OC_RANK.
     /// </summary>
-    private static KvMessage MatchingStartResponse(int rqid)
-        => KvMessage.Ok("MSG_QUICK_MATCHING_START_RES", rqid)
+    public static string RoomMatchType(string quickType) => quickType switch
+    {
+        "OC_Rank" or "OC_RANK" => "OC_RANKING",
+        "ML_RANK" or "ML_COMPE" => quickType,
+        _ => "OC_FREE",
+    };
+
+    /// <summary>
+    /// The client rejects this event as ERR_CLIENT_SVRFORMAT unless all six tuning fields
+    /// are present, so they are always written together. pes2013.exe (FUN_010e4340) reads
+    /// result, tryCount, ping and pingAdd of the _NTL variant.
+    /// </summary>
+    private static KvMessage MatchingStartResponse(string msg, int rqid)
+        => KvMessage.Ok(msg, rqid)
             .Set("tryCount", 3)
             .Set("ping", 100)
             .Set("pingAdd", 50)
@@ -204,6 +237,7 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
 
     /// <summary>The player stopped searching (FUN_005e9400); NOERR is what confirms it.</summary>
     [Command("CMD_CANCEL_STARTQUICKMATCH", Roles = Roles)]
+    [Command("CMD_CANCEL_STARTQUICKMATCH_NTL", Roles = Roles, Profiles = GameProfile.Pes2013Pc)]
     [Command("CMD_CANCEL_DECIDE_QUICKMATCH", Roles = Roles)]
     public ValueTask<KvMessage[]> Cancel(CommandContext ctx)
     {
@@ -225,6 +259,12 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
             profiles[m.Session.Pid] = await players.GetAsync(m.Session.Pid, ctx.CancellationToken);
 
         log.LogInformation("Quick match formed: pids {Pids}", string.Join(", ", group.Members.Select(m => m.Session.Pid)));
+        if (group.Members[0].Ntl)
+        {
+            await SendNtlMemberNoticeAsync(ctx, group, profiles);
+            return;
+        }
+
         foreach (var viewer in group.Members)
         {
             var entries = group.Members.Select((m, i) =>
@@ -268,6 +308,66 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
             }).ToArray();
 
             viewer.Session.Push(KvMessage.Ok("MSG_QUICK_MATCH_MEMBER_NOTICE", viewer.Rqid)
+                .Set("is_old_member", "NO")
+                .SetList("member_num", "member", entries));
+        }
+    }
+
+    /// <summary>
+    /// MSG_QUICK_MATCH_MEMBER_NOTICE_NTL (pes2013.exe FUN_010e75d0): result, member_num, derby_income,
+    /// is_old_member and member[pid, matching_order, is_owner, pname, nickname_id, manner, ntl_nat_type,
+    /// host_addr, reflexive_addr, relayed_addr, has_guestplayer, is_begin, from_country, from_area,
+    /// is_restricted, rating, ml_rating, ml_team_name, ml_base_team_id, ml_team_type, team_power].
+    /// derby_income is paid when the Master League clubs share their base team.
+    /// ponytail: the NTL addresses are the ones the client last sent with CMD_SEND_IPANDPORT_NTL;
+    /// whether it sends them before a quick match from the menu is not confirmed.
+    /// </summary>
+    private async Task SendNtlMemberNoticeAsync(CommandContext ctx, QuickGroup group, Dictionary<int, Data.Entities.Player?> profiles)
+    {
+        var clubs = new Dictionary<int, (Data.Entities.MlTeam? Team, int Power)>();
+        foreach (var m in group.Members)
+        {
+            var team = await league.TeamAsync(m.Session.Pid, ctx.CancellationToken);
+            clubs[m.Session.Pid] = (team, team is null ? 0 : league.TeamPower(await league.SquadAsync(team.Pid, ctx.CancellationToken)));
+        }
+
+        var bases = clubs.Values.Where(c => c.Team is not null).Select(c => c.Team!.BaseTeamId).ToList();
+        var derby = group.Members[0].Type is "ML_RANK" or "ML_COMPE" && bases.Count > 1 && bases.Distinct().Count() == 1
+            ? league.Rules.Options.DerbyIncome : 0;
+
+        foreach (var viewer in group.Members)
+        {
+            var entries = group.Members.Select((m, i) =>
+            {
+                var s = m.Session;
+                var p = profiles[s.Pid];
+                var (team, power) = clubs[s.Pid];
+                return new KvMessage()
+                    .Set("pid", s.Pid)
+                    .Set("matching_order", i)
+                    .Set("is_owner", i == 0 ? "YES" : "NO")
+                    .Set("pname", s.PlayerName)
+                    .Set("nickname_id", p?.NicknameId ?? 0)
+                    .Set("manner", p?.Manner ?? 3)
+                    .Set("ntl_nat_type", s.NtlNatType)
+                    .Set("host_addr", NtlAddress.HostFor(viewer.Session, s) ?? NtlAddress.Zero())
+                    .Set("reflexive_addr", s.NtlReflexiveAddr ?? NtlAddress.Zero())
+                    .Set("relayed_addr", s.NtlRelayedAddr ?? NtlAddress.Zero())
+                    .Set("has_guestplayer", "NO")
+                    .Set("is_begin", "NO")
+                    .Set("from_country", p?.Country ?? 0)
+                    .Set("from_area", p?.Area ?? 0)
+                    .Set("is_restricted", "NO")
+                    .Set("rating", p?.Rating ?? 0)
+                    .Set("ml_rating", team?.Rating ?? 0)
+                    .Set("ml_team_name", team?.Name ?? "")
+                    .Set("ml_base_team_id", team?.BaseTeamId ?? 0)
+                    .Set("ml_team_type", team?.TeamType ?? "")
+                    .Set("team_power", power);
+            }).ToList();
+
+            viewer.Session.Push(KvMessage.Ok("MSG_QUICK_MATCH_MEMBER_NOTICE_NTL", viewer.Rqid)
+                .Set("derby_income", derby)
                 .Set("is_old_member", "NO")
                 .SetList("member_num", "member", entries));
         }

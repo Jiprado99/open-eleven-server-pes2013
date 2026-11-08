@@ -18,6 +18,12 @@ public sealed record QuickSeeker(Session Session, int Rqid, string Type, int Pla
 
     public int Rating { get; init; }
 
+    /// <summary>PES 2013: the search came as MSG_QUICK_*_NTL, so every reply and push carries that suffix.</summary>
+    public bool Ntl { get; init; }
+
+    /// <summary>The message name in the seeker's dialect (PES 2013 appends _NTL).</summary>
+    public string Name(string msg) => Ntl ? msg + "_NTL" : msg;
+
     /// <summary>The player's quick match option asks for opponents of similar rating.</summary>
     public bool RatingFilter { get; init; }
 
@@ -76,7 +82,7 @@ public sealed class QuickGroup(IReadOnlyList<QuickSeeker> members)
     {
         var msg = Offered ? "MSG_QUICK_ACCEPT_MATCH_OFFER_RES" : "MSG_QUICK_MATCHING_RES";
         foreach (var m in Members.Where(m => m.Session != leaver))
-            m.Session.Push(KvMessage.Err(msg, m.Rqid, "ERR_QMATCH_CANCELED"));
+            m.Session.Push(KvMessage.Err(m.Name(msg), m.Rqid, "ERR_QMATCH_CANCELED"));
     }
 }
 

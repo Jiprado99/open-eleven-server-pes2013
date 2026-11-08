@@ -425,7 +425,7 @@ public sealed class MatchHandlers(
     /// match info, the reply to a forfeit notice, P2P status and (PES 2011 and later, where only
     /// NOERR is checked) the game member list.
     /// </summary>
-    [Command("CMD_SEND_ML_GAMEPLAYERS", Roles = ServiceRole.Menu, Profiles = GameProfiles.Modern)]
+    [Command("CMD_SEND_ML_GAMEPLAYERS", Roles = ServiceRole.Menu, Profiles = GameProfile.Pes2011Pc | GameProfile.Pes2012Pc)]
     [Command("CMD_REQ_FORFEITEDGAME_REPLY", Roles = MatchRoles, Profiles = MatchProfiles)]
     [Command("CMD_SEND_P2PSTATUS", Roles = ServiceRole.Menu, Profiles = GameProfiles.Modern)]
     [Command("CMD_SET_GAMEMEMBER", Roles = MatchRoles, Profiles = GameProfiles.Modern)]

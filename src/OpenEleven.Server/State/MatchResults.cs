@@ -216,6 +216,9 @@ public sealed class MatchResults(
             await db.SaveChangesAsync();
             room.SettledMatchId = (int)record.Id;
             await RecordLeagueMatchAsync(db, room, lineup, record, noMatch);
+            if (homeScore is { } mlScore && MasterLeague.MlMatchSettlement.IsMlMatch(room.MatchType))
+                await MasterLeague.MlMatchSettlement.SettleAsync(scope.ServiceProvider.GetRequiredService<MasterLeague.MlLeague>(),
+                    lineup, mlScore, room.HomeGoals, room.AwayGoals, sheet.Events);
             if (rated)
                 await RankSystem.RecomputeRanksAsync(db);
             room.LastResults = results;

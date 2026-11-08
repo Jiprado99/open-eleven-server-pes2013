@@ -152,7 +152,14 @@ public class MasterLeagueMarketTests
         async Task<KvMessage> Http(string type, string body) => new KvReader().Parse(await MlHttp.RenderAsync(league, type, body, 0, default));
 
         var size = await Http("ML_MARKET_PLAYER_PARAM_SIZE", "msg=\"CMD_GET_ML_PLAYERPARAMSIZE\"");
-        Assert.Equal((0, 0), (size.GetInt32("file_size", -1), size.GetInt32("uncompressed_file_size", -1)));
+        var file = await MlHttp.PlayerParamAsync(league, default);
+        Assert.Equal((file.Length, file.Length), (size.GetInt32("file_size", -1), size.GetInt32("uncompressed_file_size", -1)));
+        Assert.Single(urls, u => u.GetString("type") == "ML_MARKET_PLAYER_PARAM");
+
+        // One line per footballer: id, price, trade stop end, condition, trade stop, owners, salary.
+        var lines = System.Text.Encoding.ASCII.GetString(file).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(league.Catalog.Players.Count, lines.Length);
+        Assert.Contains($"{Average} 306000 0 240 0 1 2000", lines);
 
         var history = await Http("ML_GAMEPLAYERHISTORY", $"msg=\"CMD_GET_ML_MARKET_GAMEPLAYERHISTORY\",gameplayer_id={Average}");
         Assert.Equal("NOERR", history.GetString("result"));

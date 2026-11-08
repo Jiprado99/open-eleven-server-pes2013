@@ -192,6 +192,10 @@ public static class GameEndpoints
         // command's key=value text, the body of the answer the reply.
         app.MapMethods("/ml/{type}", ["GET", "POST"], async (string type, HttpContext http, MasterLeague.MlLeague league) =>
         {
+            // The market's footballer list is a file, not a reply.
+            if (type.Equals("ML_MARKET_PLAYER_PARAM", StringComparison.OrdinalIgnoreCase))
+                return Results.Bytes(await MasterLeague.MlHttp.PlayerParamAsync(league, http.RequestAborted), "application/octet-stream");
+
             var query = http.Request.QueryString.Value ?? "";
             if (HttpMethods.IsPost(http.Request.Method))
             {

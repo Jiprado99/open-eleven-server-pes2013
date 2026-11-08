@@ -3,6 +3,8 @@
 //
 // This file is part of OpenEleven. See the LICENSE file at the repository root.
 
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using OpenEleven.Protocol.Kv;
@@ -19,7 +21,7 @@ namespace OpenEleven.Server.MasterLeague;
 /// <item>ML_RIVAL_RANK: CMD_GET_ML_RIVAL_RANK, _LAST, _STATUS, _BONUS</item>
 /// <item>ML_PRICERANKING, ML_GAINRANKING, ML_POPULARRANKING: CMD_GET_ML_MARKET_*RANKING</item>
 /// <item>ML_GAMEPLAYERHISTORY: CMD_GET_ML_MARKET_GAMEPLAYERHISTORY</item>
-/// <item>ML_MARKET_PLAYER_PARAM_SIZE: CMD_GET_ML_PLAYERPARAMSIZE</item>
+/// <item>ML_MARKET_PLAYER_PARAM_SIZE: CMD_GET_ML_PLAYERPARAMSIZE; ML_MARKET_PLAYER_PARAM: the file itself (<see cref="PlayerParamAsync"/>)</item>
 /// </list>
 /// ponytail: how the client frames the request body is read from the decompilation, not from a
 /// capture; <see cref="ParseRequest"/> takes key=value pairs in either the socket or the form
@@ -30,7 +32,7 @@ public static class MlHttp
     public static readonly string[] UrlTypes =
     [
         "ML_RANKING", "ML_RANKING_BYID", "ML_DIVISIONRANKING", "ML_DIVISIONRANKING_BYID", "ML_RIVAL_RANK",
-        "ML_PRICERANKING", "ML_GAINRANKING", "ML_POPULARRANKING", "ML_GAMEPLAYERHISTORY", "ML_MARKET_PLAYER_PARAM_SIZE",
+        "ML_PRICERANKING", "ML_GAINRANKING", "ML_POPULARRANKING", "ML_GAMEPLAYERHISTORY", "ML_MARKET_PLAYER_PARAM", "ML_MARKET_PLAYER_PARAM_SIZE",
     ];
 
     public static string PathOf(string type) => "/ml/" + type.ToLowerInvariant();
@@ -55,7 +57,7 @@ public static class MlHttp
 
         KvMessage reply = type.ToUpperInvariant() switch
         {
-            "ML_MARKET_PLAYER_PARAM_SIZE" => Ok().Set("file_size", 0).Set("uncompressed_file_size", 0),
+            "ML_MARKET_PLAYER_PARAM_SIZE" => await ParamSizeAsync(league, ct),
             "ML_GAMEPLAYERHISTORY" => await HistoryAsync(league, Arg("gameplayer_id"), ct),
             "ML_PRICERANKING" => await MarketRankingAsync(league, MarketOrder.Price, ct),
             "ML_GAINRANKING" => await MarketRankingAsync(league, MarketOrder.Gain, ct),
@@ -114,6 +116,52 @@ public static class MlHttp
         }
 
         return Ok().Set("owner_num", owners).SetList("history_num", "price_history", list);
+    }
+
+    /// <summary>
+    /// The market's footballer list (ML_MARKET_PLAYER_PARAM). The client downloads it after
+    /// CMD_GET_ML_PLAYERPARAMSIZE and its market search walks it line by line (pes2013.exe
+    /// FUN_0065fa20 / FUN_00662ab0): a footballer missing from it never shows up, so with no file
+    /// the market is empty. Plain text, one footballer per line, separated by blanks:
+    /// <c>gameplayer_id market_price trade_stop_end condition is_trade_stop owner_num contract_price</c>.
+    /// A line whose id is 0 or whose last value is -1 is skipped; is_trade_stop≠0 hides him from
+    /// the search. file_size = uncompressed_file_size means "not compressed" (FUN_0065fc00).
+    /// ponytail: the meaning of the 3rd to 5th values comes from where the client copies them
+    /// (trade_stop date, ml_condition 80..400, is_trade_stop), not from a capture; condition is
+    /// always NORMAL (240) and nobody is ever trade-stopped.
+    /// </summary>
+    public static async Task<byte[]> PlayerParamAsync(MlLeague league, CancellationToken ct, bool rebuild = false)
+    {
+        // CMD_GET_ML_PLAYERPARAMSIZE and the download are two requests: the client sizes its
+        // buffer from the first, so the second must send the same bytes even if a club buys
+        // someone in between. The size request rebuilds; the download reuses that for a while.
+        if (!rebuild && ParamFiles.TryGetValue(league.Catalog, out var cached) && league.Now - cached.BuiltAt < ParamFileLifetime)
+            return cached.Bytes;
+
+        var owners = (await league.Db.MlTeamPlayers.GroupBy(p => p.GamePlayerId)
+            .Select(g => new { Id = g.Key, Owners = g.Count() }).ToListAsync(ct)).ToDictionary(o => o.Id, o => o.Owners);
+        var text = new StringBuilder();
+        foreach (var player in league.Catalog.Players.Where(p => p.Id > 0).OrderBy(p => p.Id))
+        {
+            var count = owners.GetValueOrDefault(player.Id);
+            var price = league.Price(player.Id, count);
+            text.Append(player.Id).Append(' ').Append(price).Append(" 0 240 0 ").Append(count).Append(' ')
+                .Append(league.Rules.Salary(price)).Append('\n');
+        }
+
+        var bytes = Encoding.ASCII.GetBytes(text.ToString());
+        ParamFiles.AddOrUpdate(league.Catalog, new ParamFile(bytes, league.Now));
+        return bytes;
+    }
+
+    private const long ParamFileLifetime = 600;
+    private sealed record ParamFile(byte[] Bytes, long BuiltAt);
+    private static readonly ConditionalWeakTable<MlCatalog, ParamFile> ParamFiles = new();
+
+    private static async Task<KvMessage> ParamSizeAsync(MlLeague league, CancellationToken ct)
+    {
+        var size = (await PlayerParamAsync(league, ct, rebuild: true)).Length;
+        return Ok().Set("file_size", size).Set("uncompressed_file_size", size);
     }
 
     private enum MarketOrder { Price, Gain, Popular }

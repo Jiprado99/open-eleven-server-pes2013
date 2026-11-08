@@ -64,6 +64,30 @@ public sealed class AvatarHandlers(GameDbContext db, ILogger<AvatarHandlers> log
     /// which is the "no picture" answer; otherwise it checks avatar_data against avatar_md5. The
     /// client uploads uppercase hex, which is what Convert.ToHexString gives back.
     /// </summary>
+    /// <summary>
+    /// The body of the AVATAR url. pes2013.exe never sends CMD_GET_AVATAR over the socket: it posts
+    /// CMD_GET_AVATAR_HTTP to the url announced as AVATAR (FUN_0058a290 / FUN_005af840) and reads the
+    /// same avatar_data_size / avatar_md5 / avatar_data keys out of the body. The request carries
+    /// the wanted <c>pid</c> in the form body or the query string.
+    /// ponytail: the way the client frames the pid and the body is read from the decompilation, not
+    /// from a live capture; the HTTP trace log shows the first real request.
+    /// </summary>
+    public static async Task<string> RenderHttpAsync(GameDbContext db, string request, CancellationToken ct)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(request, "(?:^|[?&,\\s])pid=\"?(\\d+)");
+        var pid = match.Success && int.TryParse(match.Groups[1].Value, out var parsed) ? parsed : 0;
+        var avatar = pid > 0 ? await db.Avatars.AsNoTracking().FirstOrDefaultAsync(a => a.Pid == pid, ct) : null;
+
+        var reply = new KvMessage().Set("result", "NOERR");
+        if (avatar is null)
+            reply.Set("avatar_data_size", 0);
+        else
+            reply.Set("avatar_data_size", avatar.Data.Length)
+                .Set("avatar_md5", avatar.Md5)
+                .Set("avatar_data", Convert.ToHexString(avatar.Data));
+        return new KvWriter().Write(reply).TrimEnd('\0');
+    }
+
     [Command("CMD_GET_AVATAR", Roles = ServiceRole.Menu, Profiles = GameProfiles.Since2012)]
     public async ValueTask<KvMessage[]> GetAvatar(CommandContext ctx)
     {

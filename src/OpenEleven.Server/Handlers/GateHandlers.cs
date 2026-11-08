@@ -172,6 +172,11 @@ public sealed class GateHandlers(
             entries.Add(UrlEntry("COMMU_MEMBERS_VS", $"{host}/commu_members_vs?", 0));
             entries.Add(UrlEntry("COMMU_TEAM_VS", $"{host}/commu_team_vs?", 0));
 
+            // Other players' pictures and the nickname texts are fetched over HTTP, not the
+            // socket; a type missing from this list is never requested (pes2013.exe FUN_005af840).
+            entries.Add(UrlEntry("AVATAR", $"{host}/avatar", 0));
+            entries.Add(UrlEntry("NICKNAME", $"{host}/nickname", 0));
+
             foreach (var url in options.CurrentValue.Urls)
             {
                 entries.RemoveAll(e => e.GetString("type") == url.Type);

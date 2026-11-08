@@ -169,6 +169,30 @@ public static class GameEndpoints
             }).RequireRateLimiting(HttpRateLimits.Ranking);
         }
 
+        // The AVATAR url: another player's picture (CMD_GET_AVATAR_HTTP, pid in the request).
+        app.MapMethods("/avatar", ["GET", "POST"], async (HttpContext http, OpenEleven.Data.GameDbContext db) =>
+        {
+            var query = http.Request.QueryString.Value ?? "";
+            if (HttpMethods.IsPost(http.Request.Method))
+            {
+                if (http.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+                    limit.MaxRequestBodySize = 4096;
+                using var reader = new StreamReader(http.Request.Body, Encoding.ASCII);
+                var buffer = new char[4096];
+                var body = new string(buffer, 0, await reader.ReadBlockAsync(buffer, http.RequestAborted));
+                if (body.Length > 0)
+                    query = body;
+            }
+
+            return Results.Text(await Handlers.AvatarHandlers.RenderHttpAsync(db, query, http.RequestAborted),
+                "text/plain", Encoding.UTF8);
+        }).RequireRateLimiting(HttpRateLimits.Ranking);
+
+        // The NICKNAME url: the texts of the nickname catalogue (CMD_GET_NICKNAME_COMPE).
+        app.MapMethods("/nickname", ["GET", "POST"], () =>
+            Results.Text(Handlers.NicknameHandlers.RenderCatalogue(), "text/plain", Encoding.UTF8))
+            .RequireRateLimiting(HttpRateLimits.Ranking);
+
         // The terms screen: the client GETs the EULA_PES url and shows the body (read_buffer="...").
         // The url list puts the client's language in it (?lang=SP).
         app.MapMethods("/eula_pes.txt", ["GET", "HEAD"], (HttpContext http, IOptionsMonitor<ServerOptions> options) =>

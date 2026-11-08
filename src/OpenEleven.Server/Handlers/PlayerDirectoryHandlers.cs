@@ -79,7 +79,8 @@ public sealed class PlayerDirectoryHandlers(
             .Set("name", player.Name)
             .Set("division", RankSystem.Label(player.Division, profile))
             .Set("rating", player.Rating)
-            .Set("manner", player.Manner);
+            .Set("manner", player.Manner)
+            .Set("nickname_id", player.NicknameId);
 
         var presence = hub.SessionsForPid(player.Pid)
             .Where(s => s.State >= SessionState.PlayerSelected)

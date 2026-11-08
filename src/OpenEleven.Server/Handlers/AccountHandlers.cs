@@ -342,7 +342,7 @@ public sealed class AccountHandlers(
         ctx.Session.Pid = player.Pid;
         ctx.Session.PlayerName = player.Name;
         ctx.Session.Card = new PlayerCard(RankSystem.Label(player.Division, ctx.Profile),
-            player.Rating, player.Lang, player.SelfReportLevel, player.PositionWant);
+            player.Rating, player.Lang, player.SelfReportLevel, player.PositionWant, player.NicknameId);
         ctx.Session.DesiredPositionMask = player.DesiredPositionMask;
         ctx.Session.ChatEnabled = player.ChatEnabled;
         ctx.Session.State = SessionState.PlayerSelected;
@@ -437,6 +437,11 @@ public sealed class AccountHandlers(
         if (profile.Has("area")) player.Area = profile.GetInt32("area", player.Area);
         if (profile.Has("favorite_team")) player.FavoriteTeam = profile.GetInt32("favorite_team", player.FavoriteTeam);
         if (profile.Has("favorite_player")) player.FavoritePlayer = profile.GetInt32("favorite_player", player.FavoritePlayer);
+        if (profile.Has("nickname_id") && NicknameHandlers.IsKnown(profile.GetInt32("nickname_id", 0)))
+        {
+            player.NicknameId = profile.GetInt32("nickname_id", 0);
+            ctx.Session.Card = ctx.Session.Card with { NicknameId = player.NicknameId };
+        }
         if (profile.GetString("intro") is { } intro) player.Intro = intro;
         if (profile.GetString("lang") is { } lang) player.Lang = lang;
         if (profile.GetString("selfreport_level") is { } level) player.SelfReportLevel = level;

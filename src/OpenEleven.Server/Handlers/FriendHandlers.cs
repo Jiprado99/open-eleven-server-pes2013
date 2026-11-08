@@ -60,6 +60,7 @@ public sealed class FriendHandlers(GameDbContext db, LobbyCatalog lobbies)
                 .Set("rating", p.Rating)
                 .Set("division", RankSystem.Label(p.Division, ctx.Profile))
                 .Set("manner", p.Manner)
+                .Set("nickname_id", p.NicknameId)
                 .Set("is_login", online.Count > 0 ? "YES" : "NO")
                 .Set("is_ingame", room?.Status == "GAME" ? "YES" : "NO")
                 // FUN_00735DE0 reads the friend's online mode (enum 0x25). Leaving it out

@@ -10,7 +10,7 @@ namespace OpenEleven.Server.State;
 /// entries). A snapshot from when the profile was selected: rating and division refresh at the
 /// next login, not after each match.
 /// </summary>
-public sealed record PlayerCard(string Division, int Rating, string Lang, string SelfReportLevel, string PositionWant)
+public sealed record PlayerCard(string Division, int Rating, string Lang, string SelfReportLevel, string PositionWant, int NicknameId = 0)
 {
     public static readonly PlayerCard Default = new("D5", 1000, "EN", "PRO", "CF");
 }

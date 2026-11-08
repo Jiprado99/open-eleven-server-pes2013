@@ -244,6 +244,7 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, ILogger<QuickM
                     .Set("in_ip", at.InternalIp)
                     .Set("in_port", at.InternalPort)
                     .Set("manner", p?.Manner ?? 3)
+                    .Set("nickname_id", p?.NicknameId ?? 0)
                     .Set("from_country", p?.Country ?? 0)
                     .Set("from_area", p?.Area ?? 0)
                     .Set("player_name", s.PlayerName)

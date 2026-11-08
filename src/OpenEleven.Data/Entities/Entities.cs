@@ -91,6 +91,9 @@ public sealed class Player
     public int FavoriteTeam { get; set; }
     public int FavoritePlayer { get; set; }
 
+    /// <summary>PES 2013 nickname (title) the player picked; 0 is the client's default one.</summary>
+    public int NicknameId { get; set; }
+
     [MaxLength(16)]
     public string SelfReportLevel { get; set; } = "PRO";
 

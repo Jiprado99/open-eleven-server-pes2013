@@ -41,6 +41,7 @@ public static class PlayerPresenter
         .Set("lose", p.Stats.LoseCount)
         .Set("draw", p.Stats.DrawCount)
         .Set("kind", p.Kind)
+        .Set("nickname_id", p.NicknameId)
         .Set("lang", p.Lang);
 
     /// <summary>
@@ -57,6 +58,10 @@ public static class PlayerPresenter
         for (var i = 0; i < teams.Length; i++)
             teams[i] = recentTeams is { Count: > 0 } ? (i < recentTeams.Count ? recentTeams[i] : 0) : (i == 0 ? p.FavoriteTeam : 0);
         static string Version(string? v) => string.IsNullOrWhiteSpace(v) ? "1.00" : v;
+
+        // pes2013.exe's player-info key table has nickname_id (the other titles' does not).
+        if (profile == GameProfile.Pes2013Pc)
+            message.Set("nickname_id", p.NicknameId);
 
         message
             .Set("name", p.Name)

@@ -129,7 +129,7 @@ public static class ListWatchEntries
                 .Set("reflexive_addr", member.NtlReflexiveAddr ?? Zero())
                 .Set("relayed_addr", member.NtlRelayedAddr ?? Zero())
                 .Set("ntl_nat_type", member.NtlNatType)
-                .Set("nickname_id", 0)
+                .Set("nickname_id", member.Card.NicknameId)
                 .Set("contribution_prize", 0)
                 .Set("team_match_nice_num", 0)
                 .Set("evaluation_average", 0)
@@ -220,7 +220,8 @@ public static class ListWatchEntries
         if (profile == GameProfile.Pes2013Pc)
         {
             e.Set("skill_level", SkillLevel2013(e.GetString("selfreport_level")));
-            e.Set("nickname_id", 0);
+            if (!e.Has("nickname_id"))
+                e.Set("nickname_id", 0);
         }
 
         return e;

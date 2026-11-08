@@ -86,6 +86,36 @@ Server:
     ShareIdentityByRemoteAddress: false
     EmitUnconfirmedMessages: false
 
+  # Master League Online. The footballers and squads are read once from the game installation
+  # (img\dt0f.img with Kitserver's replacements) and cached in CatalogCache; delete the cache to
+  # read the game again. The economy values are a starting point to tune.
+  # An ML competition is a Competitions entry with MasterLeague: true (plus MinTeamPower,
+  # MaxTeamPower and Prizes: [first, second, ...]).
+  MasterLeague:
+    GameDirectory: 'C:\Program Files (x86)\KONAMI\Pro Evolution Soccer 2013'
+    CatalogCache: "data/ml-catalog.json"
+    StartingTeamId: 140          # MASTERLEAGUE DEFAULT
+    StartingFunds: 5000000
+    MaxSquad: 32
+    MinSquad: 18
+    BuysPerPeriod: 5
+    BuyPeriodDays: 7
+    PriceAt75: 300000            # price of an overall 75 footballer; ×1.25 per point
+    PricePercentPerOwner: 2
+    MaxDemandPercent: 100
+    SellPercent: 80
+    NewContractMatches: 10
+    ExtendMatches: [10, 20, 30]  # CONTRACT_TYPE1..3
+    SalaryPerMille: 5            # salary per match = 0.5% of the market price
+    WinIncome: 300000
+    DrawIncome: 180000
+    LossIncome: 100000
+    YellowCardCost: 10000
+    RedCardCost: 30000
+    DerbyIncome: 50000
+    DivisionPoints: [30, 90, 180, 300]
+    RivalRankBonus: [1000000, 600000, 300000]
+
   Debug:
     HexDump: true
     HexDumpMaxBytes: 1024

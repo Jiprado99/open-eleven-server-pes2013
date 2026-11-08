@@ -69,6 +69,10 @@ public sealed class ServerOptions
     public ProtocolOptions Protocol { get; set; } = new();
     public StunOptions Stun { get; set; } = new();
     public TeamOptions Teams { get; set; } = new();
+
+    /// <summary>Master League Online (PES 2013): game data, economy and limits.</summary>
+    public MasterLeagueOptions MasterLeague { get; set; } = new();
+
     public DebugOptions Debug { get; set; } = new();
 
     public ServiceEndpointOptions RequireService(ServiceRole role)
@@ -477,4 +481,67 @@ public enum ConsoleColorMode
 
     /// <summary>Never emit colour.</summary>
     Never,
+}
+
+/// <summary>
+/// Master League Online (PES 2013). The footballers and squads come from the game's own database
+/// (img\dt0f.img of the installation, with Kitserver's afs2fs replacements applied), read once and
+/// cached as <see cref="CatalogCache"/>. Money values are the client's team_funds units.
+/// ponytail: the economy figures are not known from the original service; they are a starting
+/// point to tune with real matches.
+/// </summary>
+public sealed class MasterLeagueOptions
+{
+    /// <summary>The PES 2013 installation the catalogue is read from (when the cache is missing).</summary>
+    public string GameDirectory { get; set; } = @"C:\Program Files (x86)\KONAMI\Pro Evolution Soccer 2013";
+
+    /// <summary>The catalogue cache, relative to the server folder. Delete it to read the game again.</summary>
+    public string CatalogCache { get; set; } = "data/ml-catalog.json";
+
+    /// <summary>The game team whose squad every new club starts with (140 = MASTERLEAGUE DEFAULT).</summary>
+    public int StartingTeamId { get; set; } = 140;
+
+    public long StartingFunds { get; set; } = 5_000_000;
+
+    /// <summary>Squad limits: ERR_TEAM_MEMBER_FULL on a buy, ERR_TEAM_MEMBER_LACK on a sale.</summary>
+    public int MaxSquad { get; set; } = 32;
+    public int MinSquad { get; set; } = 18;
+
+    /// <summary>Purchases per period (enable_buy_num, ERR_ENABLE_BUY_NUM) and the period length in days.</summary>
+    public int BuysPerPeriod { get; set; } = 5;
+    public int BuyPeriodDays { get; set; } = 7;
+
+    /// <summary>Market price of a footballer of overall 75 with no owners; it grows ×1.25 per overall point.</summary>
+    public long PriceAt75 { get; set; } = 300_000;
+
+    /// <summary>Price rise per club that owns the footballer (demand), in percent, and its cap.</summary>
+    public int PricePercentPerOwner { get; set; } = 2;
+    public int MaxDemandPercent { get; set; } = 100;
+
+    /// <summary>Share of the market price a sale returns, in percent.</summary>
+    public int SellPercent { get; set; } = 80;
+
+    /// <summary>Contract length (matches) of a new signing and of each extension (CONTRACT_TYPE1..3).</summary>
+    public int NewContractMatches { get; set; } = 10;
+    public int[] ExtendMatches { get; set; } = [10, 20, 30];
+
+    /// <summary>Salary per match, in thousandths of the market price; extensions cost salary × matches (less 5% / 10% for the longer types).</summary>
+    public int SalaryPerMille { get; set; } = 5;
+
+    /// <summary>Match income by result, the cost of each card, and the share of the opponent's
+    /// squad value paid as a win bonus (per mille).</summary>
+    public long WinIncome { get; set; } = 300_000;
+    public long DrawIncome { get; set; } = 180_000;
+    public long LossIncome { get; set; } = 100_000;
+    public long YellowCardCost { get; set; } = 10_000;
+    public long RedCardCost { get; set; } = 30_000;
+
+    /// <summary>Extra income when both clubs use the same base team (derby_income).</summary>
+    public long DerbyIncome { get; set; } = 50_000;
+
+    /// <summary>Division points needed for ML_DIVISION_4..ML_DIVISION_1.</summary>
+    public int[] DivisionPoints { get; set; } = [30, 90, 180, 300];
+
+    /// <summary>Weekly Rival Rank bonus for the top three of a division (income).</summary>
+    public long[] RivalRankBonus { get; set; } = [1_000_000, 600_000, 300_000];
 }

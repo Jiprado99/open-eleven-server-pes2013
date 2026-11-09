@@ -357,6 +357,49 @@ public sealed class Hub(ILogger<Hub> log, IOptionsMonitor<ServerOptions> options
         PublishDecideGamePlayerEnv(room);
     }
 
+    /// <summary>The room each competition playoff match is played in, by CompetitionPlayoffMatch.Id.</summary>
+    private readonly ConcurrentDictionary<int, int> _playoffRooms = new();
+
+    /// <summary>
+    /// Puts a playoff player in the room of their match, made by whoever asks first
+    /// (CMD_GET_COMPLG_PLAYOFF_MATCH_NTL). Like a quick match room it belongs to no block and the
+    /// shared room tail plays it; the bracket's home side is HOME and owns it. A void game leaves
+    /// the room open for another try.
+    /// </summary>
+    public Room JoinPlayoffRoom(Session member, int playoffMatchId, int compeId, int homePid, bool home, string name,
+        string matchType, KvMessage settings)
+    {
+        lock (_playoffRooms)
+        {
+            var room = _playoffRooms.TryGetValue(playoffMatchId, out var id) ? FindRoom(id) : null;
+            if (room is null)
+            {
+                room = new Room(Interlocked.Increment(ref _nextRoomId), name, homePid, 2, member.Role, blockId: -1)
+                {
+                    MatchType = matchType,
+                    GameEnvironment = settings,
+                    CompeId = compeId,
+                    PlayoffMatchId = playoffMatchId,
+                };
+                _rooms[room.Id] = room;
+                _playoffRooms[playoffMatchId] = room.Id;
+                log.LogInformation("Room {RoomId} created for competition {CompeId} playoff match {MatchId}", room.Id, compeId, playoffMatchId);
+            }
+
+            if (member.RoomId != room.Id)
+            {
+                if (member.RoomId is { } previous)
+                    LeaveRoom(member, previous);
+                room.TryJoin(member);
+                member.RoomId = room.Id;
+            }
+
+            member.State = SessionState.InRoom;
+            member.GameSide = home ? 0 : 1;
+            return room;
+        }
+    }
+
     public Room CreateRoom(Session owner, string name, int maxMembers)
     {
         if (owner.BlockId is not { } blockId)

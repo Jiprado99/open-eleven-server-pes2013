@@ -29,6 +29,24 @@ public sealed class MailHandlers(GameDbContext db)
     /// <summary>Client buffers: subject 192 bytes, body 1536 (FUN_005e87e0).</summary>
     private const int MaxSubject = 191, MaxBody = 1535;
 
+    /// <summary>Who the server's own mails (FromPid 0: competition notices) come from.</summary>
+    public const string SystemSender = "OpenEleven";
+
+    /// <summary>
+    /// Leaves a mail from the server in a player's inbox. <paramref name="mailType"/> is a name of
+    /// the client's mail type enum (pes2013.exe 0x2e: MAIL_NORMAL, CUP_WR_PREPASS, CUP_WR_FINALWIN...).
+    /// The caller saves.
+    /// </summary>
+    public static void AddSystemMail(GameDbContext db, int toPid, string mailType, string subject, string body)
+        => db.ShortMails.Add(new ShortMail
+        {
+            FromPid = 0,
+            ToPid = toPid,
+            MailType = mailType,
+            Subject = Clip(subject, MaxSubject),
+            Body = Clip(body, MaxBody),
+        });
+
     [Command("CMD_SEND_SHORTMAIL", Roles = Roles, RequiredState = SessionState.PlayerSelected)]
     public async ValueTask<KvMessage[]> Send(CommandContext ctx)
     {
@@ -66,9 +84,9 @@ public sealed class MailHandlers(GameDbContext db)
         var entries = mails.Select(m => new KvMessage()
             .Set("smail_id", m.Id)
             .Set("from_pid", m.FromPid)
-            .Set("from_name", names.GetValueOrDefault(m.FromPid, ""))
-            .Set("mail_type", "MAIL_NORMAL")
-            .Set("reply_enable", "YES")
+            .Set("from_name", m.FromPid == 0 ? SystemSender : names.GetValueOrDefault(m.FromPid, ""))
+            .Set("mail_type", m.MailType)
+            .Set("reply_enable", m.FromPid == 0 ? "NO" : "YES")
             .Set("read_flag", m.Read ? "YES" : "NO")
             .Set("date", RankSystem.Unix(m.CreatedAt))
             .Set("mes_subject", m.Subject)).ToArray();
@@ -106,9 +124,9 @@ public sealed class MailHandlers(GameDbContext db)
         [
             ctx.Ok()
                 .Set("from_pid", mail.FromPid)
-                .Set("from_name", from?.Name ?? "")
-                .Set("mail_type", "MAIL_NORMAL")
-                .Set("reply_enable", "YES")
+                .Set("from_name", mail.FromPid == 0 ? SystemSender : from?.Name ?? "")
+                .Set("mail_type", mail.MailType)
+                .Set("reply_enable", mail.FromPid == 0 ? "NO" : "YES")
                 .Set("date", RankSystem.Unix(mail.CreatedAt))
                 .Set("mes_subject", mail.Subject)
                 .Set("mes_body", mail.Body),

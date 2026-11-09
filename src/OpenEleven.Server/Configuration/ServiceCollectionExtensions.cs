@@ -84,6 +84,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<MatchResults>();
         services.AddHostedService<RankScheduler>();
+        services.AddHostedService<Competitions.CompetitionScheduler>();
         services.AddSingleton<Hub>();
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<PendingLoginStore>();

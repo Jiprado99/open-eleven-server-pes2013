@@ -33,7 +33,13 @@ namespace OpenEleven.Server.Handlers;
 /// notice adds derby_income and the ML club of each member (FUN_010e75d0).
 /// </para>
 /// </summary>
-public sealed class QuickMatchHandlers(IPlayerRepository players, MasterLeague.MlLeague league, ILogger<QuickMatchHandlers> log)
+public sealed class QuickMatchHandlers(
+    IPlayerRepository players,
+    MasterLeague.MlLeague league,
+    OpenEleven.Data.GameDbContext db,
+    Microsoft.Extensions.Options.IOptionsMonitor<ServerOptions> options,
+    TimeProvider time,
+    ILogger<QuickMatchHandlers> log)
 {
     private const ServiceRole Roles = ServiceRole.Menu;
 
@@ -120,10 +126,20 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, MasterLeague.M
 
         // The saved options: opp_lang, then the rating filters for Rank and Free.
         var player = await players.GetAsync(ctx.Session.Pid, ctx.CancellationToken);
+
+        // "To Next Match" of a competition pairs two entrants of that competition while its qualifying round is on.
+        var compeId = 0;
+        if (type is "COMPE" or "ML_COMPE")
+        {
+            if (await QualifierEntryAsync(player, ctx.CancellationToken) is not { } cup)
+                return [ctx.Fail("ERR_QMATCH_STARTMATCHING")];
+            compeId = cup.Id;
+        }
+
         var saved = (player?.QuickMatchOptions ?? "").Split(',');
         string Saved(int i) => saved.Length == KeysFor(ctx.Profile).Length && i < saved.Length ? saved[i] : "";
         var seeker = new QuickSeeker(ctx.Session, ctx.Rqid, type, playerNum, gameTime, frrate,
-            $"{type}|{playerNum}|{gameTime}|{frrate}{(ntl ? "|NTL" : "")}")
+            $"{type}|{playerNum}|{gameTime}|{frrate}{(ntl ? "|NTL" : "")}{(compeId != 0 ? $"|C{compeId}" : "")}")
         {
             Lang = player?.Lang ?? "",
             // PES 2013 has no opponent language option; its is_rating flag asks for a similar rating.
@@ -140,6 +156,24 @@ public sealed class QuickMatchHandlers(IPlayerRepository players, MasterLeague.M
         if (ctx.Hub.QuickMatch.Search(seeker) is { } group)
             await SendMemberNoticeAsync(ctx, group);
         return [];
+    }
+
+    /// <summary>
+    /// The competition a qualifying match is played for: the one the player entered, while its
+    /// qualifying round is on, with a team picked (an ML club for an ML competition) and matches
+    /// left to play. Null otherwise.
+    /// </summary>
+    private async Task<CompetitionOptions?> QualifierEntryAsync(OpenEleven.Data.Entities.Player? player, CancellationToken ct)
+    {
+        if (player is null || Competitions.CompetitionCatalog.Find(options.CurrentValue, player.CompetitionId) is not { } cup
+            || !Competitions.CompetitionCatalog.QualifierOpen(cup, time.GetUtcNow().UtcDateTime))
+            return null;
+        if (!cup.MasterLeague && player.CompetitionTeamId == 0)
+            return null;
+        if (cup.MaxQualifierMatches > 0
+            && await Competitions.CompetitionTable.QualifierMatchesAsync(db, cup.Id, player.Pid, ct) >= cup.MaxQualifierMatches)
+            return null;
+        return cup;
     }
 
     /// <summary>A client finished pinging the others; once all have, the match is offered.</summary>

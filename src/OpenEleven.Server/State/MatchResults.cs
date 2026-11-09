@@ -76,6 +76,7 @@ public sealed class MatchResults(
                 Ranked = room.MatchType == "OC_RANKING",
                 CommuId = Hub.CommunityOfBlock(room.BlockId),
                 CompeId = room.CompeId,
+                PlayoffMatchId = room.PlayoffMatchId,
                 Completed = false,
             };
             db.Matches.Add(record);
@@ -185,6 +186,7 @@ public sealed class MatchResults(
             record.Ranked = ranked;
             record.CommuId = Hub.CommunityOfBlock(room.BlockId);
             record.CompeId = room.CompeId;
+            record.PlayoffMatchId = room.PlayoffMatchId;
             record.Rated = rated;
             record.Settings = new KvWriter().Write(settings).TrimEnd('\0');
             record.HomePeriods = MatchSheet.Format(sheet.Home);
@@ -216,6 +218,12 @@ public sealed class MatchResults(
             await db.SaveChangesAsync();
             room.SettledMatchId = (int)record.Id;
             await RecordLeagueMatchAsync(db, room, lineup, record, noMatch);
+            if (room.PlayoffMatchId != 0)
+            {
+                // The scheduler tells both players and moves the bracket on; a void game can be replayed.
+                await Competitions.CompetitionBracket.RecordAsync(db, room.PlayoffMatchId, lineup, record, homeScore, homePk, awayPk);
+                await db.SaveChangesAsync();
+            }
             if (homeScore is { } mlScore && MasterLeague.MlMatchSettlement.IsMlMatch(room.MatchType))
                 await MasterLeague.MlMatchSettlement.SettleAsync(scope.ServiceProvider.GetRequiredService<MasterLeague.MlLeague>(),
                     lineup, mlScore, room.HomeGoals, room.AwayGoals, sheet.Events);

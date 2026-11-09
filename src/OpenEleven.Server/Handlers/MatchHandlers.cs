@@ -405,10 +405,13 @@ public sealed class MatchHandlers(
                     .Set("score_ex2nd", p[3]).Set("score_pk", p[4]);
             }
 
-            // mode is enum 0x25: RANK_MATCH | COMPE_MATCH; every match played here is the former.
+            // mode is enum 0x25 (2011: RANK_MATCH | COMPE_MATCH; 2013 0x32 adds ML_RANK_MATCH and ML_COMPE_MATCH):
+            // a competition match is COMPE_MATCH, a Master League one ML_*.
+            var ml = ctx.Profile == GameProfile.Pes2013Pc && m.Settings.Contains("match_type=\"ML_", StringComparison.Ordinal);
+            var mode = m.CompeId != 0 ? (ml ? "ML_COMPE_MATCH" : "COMPE_MATCH") : ml ? "ML_RANK_MATCH" : "RANK_MATCH";
             entries.Add(new KvMessage()
                 .Set("date", new DateTimeOffset(DateTime.SpecifyKind(m.PlayedAt, DateTimeKind.Utc)).ToUnixTimeSeconds())
-                .Set("mode", "RANK_MATCH")
+                .Set("mode", mode)
                 .Set("ex_type", m.ExtraTime ? "YES" : "NO")
                 .Set("pk_flag", m.Penalties ? "YES" : "NO")
                 .Set("no_match", m.Disconnected ? "YES" : "NO")

@@ -215,6 +215,9 @@ public sealed class MatchRecord
     /// <summary>The competition (config id) the match was played for, 0 for any other.</summary>
     public int CompeId { get; set; }
 
+    /// <summary>The competition playoff match (CompetitionPlayoffMatch.Id) it was played for; 0 for a qualifying or any other match.</summary>
+    public int PlayoffMatchId { get; set; }
+
     public bool Disconnected { get; set; }
     public int? DisconnectedPid { get; set; }
 
@@ -299,6 +302,13 @@ public sealed class ShortMail
 
     [MaxLength(1536)]
     public string Body { get; set; } = "";
+
+    /// <summary>
+    /// Mail type enum (MAIL_NORMAL, or one of the competition notices CUP_WR_* the server sends
+    /// with <see cref="FromPid"/> 0, which cannot be answered).
+    /// </summary>
+    [MaxLength(24)]
+    public string MailType { get; set; } = "MAIL_NORMAL";
 
     public bool Read { get; set; }
     public bool DeletedBySender { get; set; }

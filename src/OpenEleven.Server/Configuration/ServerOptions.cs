@@ -196,6 +196,95 @@ public sealed class CompetitionOptions
 
     /// <summary>Prize money by final place (1st, 2nd, ...), paid by CMD_GET_ML_COMPE_PRIZE.</summary>
     public long[] Prizes { get; set; } = [];
+
+    // ---- PES 2013 (pes2013.exe list FUN_005b31e0, detail FUN_005b3fc0, playoff FUN_00679c40) ----
+
+    /// <summary>The cup the trophy and banner are drawn as (enum 0x17, the compe_kind names); empty uses <see cref="Kind"/>.</summary>
+    public string Trophy { get; set; } = "";
+
+    /// <summary>Banner and cup artwork the client loads by name (banner_file_name, cup_file_name); empty for none.</summary>
+    public string BannerFileName { get; set; } = "";
+    public string CupFileName { get; set; } = "";
+
+    /// <summary>Free text on the detail page.</summary>
+    public string Comment { get; set; } = "";
+
+    /// <summary>compe_fee shown on the detail page (entry is free: nothing is charged).</summary>
+    public int Fee { get; set; }
+
+    /// <summary>
+    /// PES 2013 entry limit, enum 0x0e: SKILLLEVEL (with <see cref="SkillLevels"/>), TEAMPOWER (the
+    /// Master League limits) or FACEBOOK. A PES 2011 value (DIVISION, WEEKRANK) is sent as SKILLLEVEL.
+    /// </summary>
+    public string EntryLimit { get; set; } = "SKILLLEVEL";
+
+    /// <summary>Skill levels that may enter (enum 0x61 BEGINNER..SUPERSTAR); empty lets all in.</summary>
+    public string[] SkillLevels { get; set; } = [];
+
+    /// <summary>Game time of the playoff rounds and of the final (enum 0x15); empty uses <see cref="GameTime"/>.</summary>
+    public string PlayoffGameTime { get; set; } = "";
+    public string FinalGameTime { get; set; } = "";
+
+    /// <summary>
+    /// Entrants the qualifying round sends to the knockout playoff (2 to 16; the client draws a
+    /// bracket of 16 and gives the top seeds a bye when fewer qualify). 0 = no playoff: the
+    /// qualifying table decides the champion. Unset: 16 for PES 2013, 0 for the older titles
+    /// (their clients' playoff screens are not implemented).
+    /// </summary>
+    public int? PlayoffSize { get; set; }
+
+    /// <summary>The playoff size in force (see <see cref="PlayoffSize"/>; CompetitionCatalog fills it in).</summary>
+    public int PlayoffPlaces => Math.Clamp(PlayoffSize ?? 0, 0, 16);
+
+    /// <summary>Qualifying matches an entrant must have played to reach the playoff.</summary>
+    public int MinQualifierMatches { get; set; } = 1;
+
+    /// <summary>Qualifying matches an entrant may play; 0 = no limit.</summary>
+    public int MaxQualifierMatches { get; set; }
+
+    /// <summary>When the first playoff round starts; empty uses <see cref="MatchEnd"/>.</summary>
+    public DateTime? PlayoffStart { get; set; }
+
+    /// <summary>Minutes from one playoff round to the next. A round not played by then is settled by the server.</summary>
+    public int PlayoffRoundMinutes { get; set; } = 30;
+
+    /// <summary>
+    /// Minutes a playoff player has to show up for the round (limit_time). If only one of the two
+    /// showed, they go through and the other is out (is_disqualified).
+    /// </summary>
+    public int ShowUpMinutes { get; set; } = 10;
+
+    /// <summary>
+    /// Runs the competition again every this many days, as a new competition with compe_id
+    /// <see cref="Id"/> + n and all its times moved by n periods. 0 = once. Leave a gap of ids
+    /// after a repeating competition.
+    /// </summary>
+    public int RepeatEveryDays { get; set; }
+
+    /// <summary>How many times it runs when it repeats; 0 = without end.</summary>
+    public int RepeatCount { get; set; }
+
+    /// <summary>Instance number of a repeating competition (set by CompetitionCatalog, not configured).</summary>
+    internal int Occurrence { get; set; }
+
+    /// <summary>The first playoff round's start.</summary>
+    public DateTime PlayoffStartAt => PlayoffStart ?? MatchEnd;
+
+    /// <summary>A copy moved <paramref name="n"/> periods ahead, with its own compe_id.</summary>
+    internal CompetitionOptions Repeat(int n)
+    {
+        var shift = TimeSpan.FromDays((double)RepeatEveryDays * n);
+        var copy = (CompetitionOptions)MemberwiseClone();
+        copy.Id = Id + n;
+        copy.Occurrence = n;
+        copy.EntryStart += shift;
+        copy.EntryEnd += shift;
+        copy.MatchStart += shift;
+        copy.MatchEnd += shift;
+        copy.End += shift;
+        copy.PlayoffStart = PlayoffStart + shift;
+        return copy;
+    }
 }
 
 /// <summary>

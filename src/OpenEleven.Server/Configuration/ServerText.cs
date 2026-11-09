@@ -299,5 +299,77 @@ public static class ServerText
             ["HE"] = "עונה {0} הסתיימה. ירדת מ-{1} ל-{2}.",
             ["CH"] = "第 {0} 賽季已結束。你已從 {1} 降級至 {2}。",
         },
+
+        // Online competition mails (FromPid 0). {0} is the competition's name.
+        ["cup.prepass.subject"] = new()
+        {
+            ["EN"] = "{0}: through to the playoff", ["SP"] = "{0}: pasaste a la fase final", ["PR"] = "{0}: classificado para a fase final",
+            ["IT"] = "{0}: qualificato alla fase finale", ["FR"] = "{0} : qualifié pour la phase finale", ["GR"] = "{0}: für die Endrunde qualifiziert",
+        },
+        ["cup.prepass.body"] = new()
+        {
+            ["EN"] = "You finished number {1} in the qualifying round of {0} and are through to the playoff. Check the bracket for the time of your first match.",
+            ["SP"] = "Terminaste en el puesto {1} de la clasificación de {0} y pasaste a la fase final. Mirá el cuadro para saber la hora de tu primer partido.",
+            ["PR"] = "Você terminou em {1}º na fase de classificação de {0} e foi para a fase final. Veja a chave para saber o horário da sua primeira partida.",
+            ["IT"] = "Hai chiuso al posto {1} nel turno di qualificazione di {0} e sei passato alla fase finale. Guarda il tabellone per l'orario della tua prima partita.",
+            ["FR"] = "Vous avez terminé {1}e du tour de qualification de {0} et êtes qualifié pour la phase finale. Consultez le tableau pour l'heure de votre premier match.",
+            ["GR"] = "Du hast die Qualifikation von {0} auf Platz {1} beendet und bist in der Endrunde. Im Turnierbaum steht die Zeit deines ersten Spiels.",
+        },
+        ["cup.win.subject"] = new()
+        {
+            ["EN"] = "{0}: champion!", ["SP"] = "{0}: ¡campeón!", ["PR"] = "{0}: campeão!", ["IT"] = "{0}: campione!",
+            ["FR"] = "{0} : champion !", ["GR"] = "{0}: Meister!",
+        },
+        ["cup.win.body"] = new()
+        {
+            ["EN"] = "Congratulations, you won {0}!", ["SP"] = "¡Felicitaciones, ganaste {0}!", ["PR"] = "Parabéns, você venceu {0}!",
+            ["IT"] = "Complimenti, hai vinto {0}!", ["FR"] = "Félicitations, vous avez remporté {0} !", ["GR"] = "Glückwunsch, du hast {0} gewonnen!",
+        },
+        ["cup.result.subject"] = new()
+        {
+            ["EN"] = "{0}: final result", ["SP"] = "{0}: resultado final", ["PR"] = "{0}: resultado final", ["IT"] = "{0}: risultato finale",
+            ["FR"] = "{0} : résultat final", ["GR"] = "{0}: Endergebnis",
+        },
+        ["cup.result.body"] = new()
+        {
+            ["EN"] = "{0} is over. Your result: {1}.", ["SP"] = "{0} terminó. Tu resultado: {1}.", ["PR"] = "{0} terminou. Seu resultado: {1}.",
+            ["IT"] = "{0} è finito. Il tuo risultato: {1}.", ["FR"] = "{0} est terminé. Votre résultat : {1}.", ["GR"] = "{0} ist vorbei. Dein Ergebnis: {1}.",
+        },
+        ["cup.end.subject"] = new()
+        {
+            ["EN"] = "{0} is over", ["SP"] = "{0} terminó", ["PR"] = "{0} terminou", ["IT"] = "{0} è finito", ["FR"] = "{0} est terminé", ["GR"] = "{0} ist vorbei",
+        },
+        ["cup.end.body"] = new()
+        {
+            ["EN"] = "{0} is over. Thank you for taking part.", ["SP"] = "{0} terminó. Gracias por participar.",
+            ["PR"] = "{0} terminou. Obrigado por participar.", ["IT"] = "{0} è finito. Grazie per aver partecipato.",
+            ["FR"] = "{0} est terminé. Merci d'avoir participé.", ["GR"] = "{0} ist vorbei. Danke fürs Mitmachen.",
+        },
+        ["cup.goal.subject"] = new()
+        {
+            ["EN"] = "{0}: top scorer", ["SP"] = "{0}: goleador", ["PR"] = "{0}: artilheiro", ["IT"] = "{0}: capocannoniere",
+            ["FR"] = "{0} : meilleur buteur", ["GR"] = "{0}: Torschützenkönig",
+        },
+        ["cup.goal.body"] = new()
+        {
+            ["EN"] = "You were the top scorer of {0} with {1} goals.", ["SP"] = "Fuiste el goleador de {0} con {1} goles.",
+            ["PR"] = "Você foi o artilheiro de {0} com {1} gols.", ["IT"] = "Sei stato il capocannoniere di {0} con {1} gol.",
+            ["FR"] = "Vous êtes le meilleur buteur de {0} avec {1} buts.", ["GR"] = "Du warst mit {1} Toren Torschützenkönig von {0}.",
+        },
+        ["cup.assist.subject"] = new()
+        {
+            ["EN"] = "{0}: most assists", ["SP"] = "{0}: máximo asistidor", ["PR"] = "{0}: líder de assistências", ["IT"] = "{0}: miglior assistman",
+            ["FR"] = "{0} : meilleur passeur", ["GR"] = "{0}: beste Vorlagen",
+        },
+        ["cup.assist.body"] = new()
+        {
+            ["EN"] = "You made the most assists in {0}: {1}.", ["SP"] = "Fuiste el que más asistencias dio en {0}: {1}.",
+            ["PR"] = "Você deu mais assistências em {0}: {1}.", ["IT"] = "Hai fatto più assist di tutti in {0}: {1}.",
+            ["FR"] = "Vous avez fait le plus de passes décisives dans {0} : {1}.", ["GR"] = "Du hast in {0} die meisten Vorlagen gegeben: {1}.",
+        },
+        ["cup.place.SECOND_PLACE"] = new() { ["EN"] = "runner-up", ["SP"] = "subcampeón", ["PR"] = "vice-campeão", ["IT"] = "secondo posto", ["FR"] = "finaliste", ["GR"] = "Vizemeister" },
+        ["cup.place.BEST_4"] = new() { ["EN"] = "semi-finalist", ["SP"] = "semifinalista", ["PR"] = "semifinalista", ["IT"] = "semifinalista", ["FR"] = "demi-finaliste", ["GR"] = "Halbfinale" },
+        ["cup.place.BEST_8"] = new() { ["EN"] = "quarter-finalist", ["SP"] = "cuartos de final", ["PR"] = "quartas de final", ["IT"] = "quarti di finale", ["FR"] = "quart de finale", ["GR"] = "Viertelfinale" },
+        ["cup.place.FINAL_ADVANCEMENT"] = new() { ["EN"] = "round of 16", ["SP"] = "octavos de final", ["PR"] = "oitavas de final", ["IT"] = "ottavi di finale", ["FR"] = "huitième de finale", ["GR"] = "Achtelfinale" },
     };
 }

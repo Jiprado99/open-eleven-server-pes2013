@@ -92,6 +92,23 @@ public sealed class Session
     public int? CommunityMatchWatchRqid { get; set; }
 
     public int? CommunityMatchWaitingRqid { get; set; }
+
+    /// <summary>
+    /// The competition screens' parked watches (pes2013.exe FUN_005b6da0..FUN_005b7cd0): the
+    /// qualifying round's or the playoff's end, an aborted competition, a playoff round starting,
+    /// its start time, a playoff match's result, the server's match time limit and the entrant count.
+    /// Pushes reuse these rqids.
+    /// </summary>
+    public int? CompeEndWatchRqid { get; set; }
+    public int? CompeAbortWatchRqid { get; set; }
+    public int? CompeMatchStartWatchRqid { get; set; }
+    public int? CompeMatchStartTimeWatchRqid { get; set; }
+    public int? CompeEndMatchWatchRqid { get; set; }
+    public int? ServerMatchEndWatchRqid { get; set; }
+    public int? CompePlayerNumWatchRqid { get; set; }
+
+    /// <summary>The competition end this connection was already answered on arming (compe_id:end_kind), so it is not repeated.</summary>
+    public string CompeEndAnswered { get; set; } = "";
     public int RoomEntryNo { get; set; } = -1;
     public int GameEntryNo { get; set; } = -1;
     public int GameSide { get; set; } = -1;

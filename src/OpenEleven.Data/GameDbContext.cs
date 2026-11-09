@@ -29,6 +29,8 @@ public sealed class GameDbContext(DbContextOptions<GameDbContext> options) : DbC
     public DbSet<CommunityLeagueCell> CommunityLeagueCells => Set<CommunityLeagueCell>();
     public DbSet<CommunityLeagueMatch> CommunityLeagueMatches => Set<CommunityLeagueMatch>();
     public DbSet<CompetitionEntry> CompetitionEntries => Set<CompetitionEntry>();
+    public DbSet<CompetitionProgress> CompetitionProgress => Set<CompetitionProgress>();
+    public DbSet<CompetitionPlayoffMatch> CompetitionPlayoffMatches => Set<CompetitionPlayoffMatch>();
     public DbSet<MlTeam> MlTeams => Set<MlTeam>();
     public DbSet<MlTeamPlayer> MlTeamPlayers => Set<MlTeamPlayer>();
     public DbSet<MlChecklistItem> MlChecklist => Set<MlChecklistItem>();
@@ -141,6 +143,13 @@ public sealed class GameDbContext(DbContextOptions<GameDbContext> options) : DbC
         {
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.Pid, x.CompeId }).IsUnique();
+        });
+
+        b.Entity<CompetitionProgress>(e => e.HasKey(x => x.CompeId));
+        b.Entity<CompetitionPlayoffMatch>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.CompeId, x.Round, x.Slot }).IsUnique();
         });
 
         b.Entity<MlTeam>(e => e.HasKey(x => x.Pid));

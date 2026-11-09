@@ -1,0 +1,117 @@
+@page "/competitions"
+@model CompetitionsModel
+@{
+    ViewData["Title"] = Model.Cup?.Name ?? "Competitions";
+    ViewData["Nav"] = "competitions";
+    static string When(DateTime utc) => utc.ToString("yyyy-MM-dd HH:mm") + " UTC";
+}
+
+@if (Model.Cup is not { } cup)
+{
+    <h1 class="title">Competitions</h1>
+    <section class="panel">
+        @if (Model.List.Count == 0)
+        {
+            <p class="empty">There are no competitions right now.</p>
+        }
+        else
+        {
+            <div class="scroll">
+                <table class="list">
+                    <thead>
+                    <tr><th>Competition</th><th>Stage</th><th>Qualifying round</th><th class="num">Entrants</th><th>Champion</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var r in Model.List)
+                    {
+                        <tr>
+                            <td><a href="/competitions?id=@r.Cup.Id">@r.Cup.Name</a>@if (r.Cup.MasterLeague) { <span class="tag">MLO</span> }</td>
+                            <td>@r.Stage</td>
+                            <td class="muted">@When(r.Cup.MatchStart) – @When(r.Cup.MatchEnd)</td>
+                            <td class="num">@r.Entrants / @r.Cup.Capacity</td>
+                            <td>@r.Champion</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+else
+{
+    <h1 class="title">@cup.Name</h1>
+    <p class="subtitle">@Model.Stage · entry @When(cup.EntryStart) – @When(cup.EntryEnd) · qualifying @When(cup.MatchStart) – @When(cup.MatchEnd)
+        @if (OpenEleven.Server.Competitions.CompetitionCatalog.PlayoffRounds(cup) > 0)
+        {
+            <text> · playoff from @When(cup.PlayoffStartAt), @cup.PlayoffRoundMinutes min a round</text>
+        }
+    </p>
+    @if (Model.Champion.Length > 0)
+    {
+        <p class="msg">Champion: <strong>@Model.Champion</strong></p>
+    }
+
+    @if (Model.Bracket.Count > 0)
+    {
+        <section class="panel">
+            <h2>Playoff</h2>
+            <div class="body grid two">
+                @foreach (var round in Model.Bracket.GroupBy(g => g.Round))
+                {
+                    <div>
+                        <h3>@CompetitionsModel.RoundName(round.Key)</h3>
+                        <table class="list">
+                            <tbody>
+                            @foreach (var g in round.OrderBy(g => g.Slot))
+                            {
+                                <tr>
+                                    <td>@if (g.Home.Won) { <strong>@g.Home.Name</strong> } else { @(g.Home.Pid == 0 ? "—" : g.Home.Name) } <span class="muted">@g.Home.Team</span></td>
+                                    <td class="num score">@(g.Finished && g.EndKind == "NORMAL_END" && g.Home.Pid != 0 && g.Away.Pid != 0 ? $"{g.Home.Goals}–{g.Away.Goals}{(g.Penalties ? " (p)" : "")}" : g.Finished && g.EndKind == "TIMEOUT" ? "w/o" : "")</td>
+                                    <td>@if (g.Away.Won) { <strong>@g.Away.Name</strong> } else { @(g.Away.Pid == 0 ? "—" : g.Away.Name) } <span class="muted">@g.Away.Team</span></td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    <section class="panel">
+        <h2>Qualifying round</h2>
+        @if (Model.Table.Count == 0)
+        {
+            <p class="empty">Nobody has entered yet.</p>
+        }
+        else
+        {
+            <div class="scroll">
+                <table class="list">
+                    <thead>
+                    <tr><th class="num">#</th><th>Player</th><th>Team</th><th class="num">P</th><th class="num">W</th><th class="num">D</th><th class="num">L</th><th class="num">GF</th><th class="num">GA</th><th class="num">Pts</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var l in Model.Table)
+                    {
+                        <tr>
+                            <td class="num muted">@OpenEleven.Server.Competitions.CompetitionTable.RankOf(Model.Table, l)</td>
+                            <td><a href="/players/@l.Player.Pid">@l.Player.Name</a>@if (Model.Qualifiers.Contains(l.Player.Pid)) { <span class="tag">Q</span> }</td>
+                            <td class="muted">@(l.TeamName == "-" ? "" : l.TeamName)</td>
+                            <td class="num">@l.Tally.Matches</td>
+                            <td class="num">@l.Tally.Wins</td>
+                            <td class="num">@l.Tally.Draws</td>
+                            <td class="num">@l.Tally.Losses</td>
+                            <td class="num">@l.Tally.GoalsFor</td>
+                            <td class="num">@l.Tally.GoalsAgainst</td>
+                            <td class="num score">@l.Points</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+    <p><a href="/competitions">All competitions</a></p>
+}

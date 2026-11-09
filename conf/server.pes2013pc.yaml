@@ -86,11 +86,55 @@ Server:
     ShareIdentityByRemoteAddress: false
     EmitUnconfirmedMessages: false
 
+  # Online Competition. Times are UTC. Entrants pick a team and play the qualifying round
+  # (MatchStart..MatchEnd) with "To Next Match", against other entrants. Then the best PlayoffSize
+  # (2..16; 0 = no playoff, the table decides) play a knockout bracket from PlayoffStart (default
+  # MatchEnd), one round every PlayoffRoundMinutes; who has not turned up after ShowUpMinutes
+  # loses to who did. Kind and Trophy are pes2013.exe compe_kind names: KONAMI_CHAMPIONSHIP,
+  # UEFA_Champions_League, International_Cup_Online, WEPES_CLUB_OPEN, Novice_Cup, ML_Open,
+  # ML_High_Class_Cup, RESERVED_CUP01..100... EntryLimit is SKILLLEVEL (SkillLevels: [BEGINNER,
+  # AMATEUR, STANDARD, PROFESSIONAL, TOPPLAYER, SUPERSTAR], empty = all) or TEAMPOWER (MLO).
+  # RepeatEveryDays runs it again as compe_id Id + n with its times moved; leave a gap of ids.
+  # A Master League competition has MasterLeague: true, MinTeamPower/MaxTeamPower and Prizes by
+  # playoff result: [VICTORY, SECOND_PLACE, BEST_4, BEST_8, FINAL_ADVANCEMENT].
+  Competitions:
+    - Id: 1000
+      Name: OpenEleven Weekly Cup
+      Kind: KONAMI_CHAMPIONSHIP
+      Category: GOLD              # PLATINUM | GOLD | SILVER | BRONZE
+      EntryStart: 2026-11-09T00:00:00Z
+      EntryEnd: 2026-11-14T18:00:00Z
+      MatchStart: 2026-11-10T00:00:00Z
+      MatchEnd: 2026-11-14T18:00:00Z
+      End: 2026-11-15T12:00:00Z
+      Capacity: 64
+      GameTime: TIME_10           # TIME_5 | TIME_10 | TIME_15
+      PlayoffSize: 16
+      MinQualifierMatches: 3
+      PlayoffRoundMinutes: 30
+      ShowUpMinutes: 10
+      RepeatEveryDays: 7
+    - Id: 2000
+      Name: MLO Open
+      Kind: ML_Open
+      MasterLeague: true
+      EntryLimit: TEAMPOWER
+      MinTeamPower: 0
+      MaxTeamPower: 0
+      EntryStart: 2026-11-09T00:00:00Z
+      EntryEnd: 2026-11-21T18:00:00Z
+      MatchStart: 2026-11-10T00:00:00Z
+      MatchEnd: 2026-11-21T18:00:00Z
+      End: 2026-11-22T12:00:00Z
+      Capacity: 64
+      PlayoffSize: 8
+      MinQualifierMatches: 3
+      Prizes: [3000000, 1500000, 800000, 400000, 200000]
+      RepeatEveryDays: 14
+
   # Master League Online. The footballers and squads are read once from the game installation
   # (img\dt0f.img with Kitserver's replacements) and cached in CatalogCache; delete the cache to
   # read the game again. The economy values are a starting point to tune.
-  # An ML competition is a Competitions entry with MasterLeague: true (plus MinTeamPower,
-  # MaxTeamPower and Prizes: [first, second, ...]).
   MasterLeague:
     GameDirectory: 'C:\Program Files (x86)\KONAMI\Pro Evolution Soccer 2013'
     CatalogCache: "data/ml-catalog.json"
